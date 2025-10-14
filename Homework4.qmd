@@ -1,0 +1,142 @@
+---
+title: "Homework 4"
+author: "Group 1: Brennan Chan, Connor Alfeiri, Tyler Frankowiak"
+format: pdf
+editor: visual
+---
+
+# Homework 4
+
+## Question 1
+
+Although invisible and intangible, ambient conditions such as air quality ($x_1$), temperature ($x_2$), odor/aroma ($x_3$), music ($x_4$), noise level ($x_5$), and overall image ($x_6$) may affect guests’ satisfaction with their stay at a hotel. A study in the *Journal of Hospitality Marketing & Management* (Vol. 24, 2015) was designed to assess the effect of each of these ambient factors on customer satisfaction with the hotel ($y$). Using a survey, researchers collected data for a sample of 422 guests at 5-star hotels. All variables were measured as an average of several 5-point questionnaire responses. The results of the multiple regression are summarized in the accompanying table.
+
+| **Variable**      | $\beta$ estimate |
+|-------------------|------------------|
+| Air Quality       | 0.122            |
+| Temperature       | 0.018            |
+| Odor/Aroma        | 0.124            |
+| Music             | 0.119            |
+| Noise/Sound Level | 0.101            |
+| Overall Image     | 0.463            |
+
+### Part A
+
+NOTE: for the intercept you dont need to worry having it since it wasnt listed just but an empty beta 0/ 
+
+Write the equation of a first-order model for hotel image ($y$) as a function of the six ambient conditions.
+
+$$
+\hat{y} = (\text{unknown intercept})\beta_0 + + 0.122(\text{Air Quality}) + 0.018(\text{Temperature}) + \\
+0.124(\text{Odor/Aroma}) + 0.119(\text{Music}) +
+0.101(\text{Noise/Sound Level}) + 0.463(\text{Overall Image}) + \varepsilon 
+$$
+
+### Part B
+
+Give a practical interpretation of each of the ($\beta$)-estimates shown.
+
+Each ($\beta$)-estimate represents the *expected change in the predicted hotel image rating* (($\hat{y}$)) for a **one-unit increase** in the corresponding ambient condition, **holding all other variables constant**.
+
+-   ($\beta_{1}$ = 0.122): For every one-unit increase in **Air Quality**, the predicted hotel image ($\hat{y}$) increases by 0.122, assuming other factors remain constant.\
+-   ($\beta_{2}$ = 0.018): For every one-unit increase in **Temperature**, ($\hat{y}$) increases by 0.018, holding all else constant.\
+-   ($\beta_{3}$ = 0.124): For every one-unit increase in **Odor/Aroma**, ($\hat{y}$) increases by 0.124, holding all else constant.\
+-   ($\beta_{4}$ = 0.119): For every one-unit increase in **Music**, ($\hat{y}$) increases by 0.119, holding all else constant.\
+-   ($\beta_{5}$ = 0.101): For every one-unit increase in **Noise/Sound Level**, ($\hat{y}$) increases by 0.101, holding all else constant.\
+-   ($\beta_{0}$ = 0.463): The intercept represents the predicted value of ($\hat{y}$) (hotel image) when all six ambient condition variables are equal to zero.
+
+## Question 2
+
+Consider a multiple-regression model for predicting the total number of runs scored by a Major League Baseball (MLB) team during a season. The data on number of walks ($x_1$), singles ($x_2$), doubles ($x_3$), triples ($x_4$), home runs ($x_5$), stolen bases ($x_6$), times caught stealing ($x_7$), strike-outs ($x_8$), and ground outs ($x_9$) and total number of runs scored ($y$) for each of the 30 teams during the 2017 MLB season can be read from [Link](http://www.jpstats.org/Regression/data/MLBRUNS2017.csv)
+
+### Part A
+
+Fit the multiple regression model to the data. Give the fitted model equation.
+
+```{r, Messages=FALSE}
+# Messages = False sometimes doesn't work so I added insurance
+suppressPackageStartupMessages(library(tidymodels))
+suppressPackageStartupMessages(library(tidyverse))
+
+# quick import of the data set
+# got some warning when trying to read in the csv so suppressed it with the show col types 
+dat = read_csv("http://www.jpstats.org/Regression/data/MLBRUNS2017.csv", show_col_types = FALSE)
+
+# Get only the usefull columns 
+mlb_data <- dat[, c("RUNS", "WALKS", "SINGLES", "DOUBLES", "TRIPLES", 
+                    "HOMERUNS", "STOLEBASES", "CAUGHTSTEAL", "STRIKEOUTS", "GRNDOUTS")]
+```
+
+```{r}
+
+# the '.' selects all but the previously listed column from a data variable
+data_recipe = recipe(RUNS~., data = mlb_data)
+
+# setup the model
+lm_spec = linear_reg(engine = "lm")
+
+# Create workflow object
+wf = workflow()
+wf = add_recipe(wf, data_recipe)
+wf = add_model(wf, lm_spec)
+
+# Fit the model to the data 
+fit_lm = fit(wf, data = mlb_data)
+
+# Get coefficients neatly
+tidy_output = tidy(fit_lm)
+print(tidy_output)
+
+# might want to get rid of tidy output to "reduce duplicate code" 
+```
+
+Fitted Model Equation:
+
+$$
+\hat{y} = -709.082
++ 0.397\,(x_1)
++ 0.618\,(x_2)
++ 0.819\,(x_3)
++ 0.756\,(x_4)
++ 1.561\,(x_5) \\
++ 0.089\,(x_6)
++ 1.080\,(x_7)
++ 0.018\,(x_8)
++ 0.042\,(x_9)
+$$
+
+### Part B
+
+Give practical interpretations of the estimated coefficients.
+
+-   **WALKS (BB)**: For each additional walk, predicted runs increase by $0.3968$ runs on average ($p = 1.17\times 10^{-4}$, significant).
+
+-   **SINGLES**: For each additional single, predicted runs increase by $0.6177$ runs on average ($p = 5.23\times 10^{-6}$, significant).
+
+-   **DOUBLES**: For each additional double, predicted runs increase by $0.8192$ runs on average ($p = 2.47\times 10^{-4}$, significant).
+
+-   **TRIPLES**: For each additional triple, predicted runs increase by $0.7557$ runs on average ($p = 0.172$, not statistically significant at 0.05).
+
+-   **HOMERUNS**: For each additional home run, predicted runs increase by $1.5611$ runs on average ($p = 6.78\times 10^{-7}$, significant).
+
+-   **STOLEBASES**: For each additional stolen base, predicted runs increase by $0.0892$ runs on average ($p = 0.722$, not significant).
+
+-   **CAUGHTSTEAL**: For each additional caught stealing, predicted runs increase by $1.0796$ runs on average ($p = 0.218$, not significant).\
+    *Note:* The positive sign here can occur due to correlation structure with other variables; interpret cautiously unless significant.
+
+-   **STRIKEOUTS**: For each additional strikeout, predicted runs increase by $0.0175$ runs on average ($p = 0.736$, not significant).\
+    *likely reflecting multicollinearity with other hitting stats.*
+
+-   **GRNDOUTS/Ground Outs**: For each additional ground out, predicted runs increase by $0.0422$ runs on average ($p = 0.512$, not significant).
+
+### Part C
+
+Test for overall model utility.
+
+```{r}
+# Get model summary stats
+glance_output = glance(fit_lm)
+print(glance_output)
+```
+
+The p-value of the model is $1.668341 \times 10^{-9}$ which is less than $0.05$ the regression model provides evidence that at least one offensive variable contributes meaningfully to predicting total runs.

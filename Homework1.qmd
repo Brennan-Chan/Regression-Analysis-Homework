@@ -1,0 +1,79 @@
+---
+title: "Homework 1"
+author: "Brennan Chan, Arthur Koerner, Zhaoji Meng"
+format: pdf
+editor: visual
+---
+
+## 1. Use the following data points for the exercise
+
+```{r}
+x = 1:6
+y = c(1, 2, 2, 3, 5, 5)
+```
+
+### A. Plot the data points using ggplot. Comment on the relationship between x and y.
+
+```{r, message = FALSE}
+library(tidyverse)
+
+df = tibble(x = x, y = y)
+
+ggplot(df, aes(x, y)) +
+  geom_point(size = 3) +
+  labs(title = "Scatter of y vs x") +
+  theme_minimal()
+```
+
+-   At the very least x and y are positively correlated as they both increase with each other. If you turn it sidways it looks like a Tan line.
+
+### B. Find the least squares estimates for a line fitted to the data.
+
+```{r}
+n = length(x)
+xb = mean(x)
+yb = mean(y)
+Sxx = sum( (x - xb)^2 )
+Sxy = sum( (x - xb) * (y - yb) )
+b1 = Sxy / Sxx                    
+b0 = yb - b1 * xb              
+
+cat("Intercept (b0) =", round(b0, 6), "\n")     
+cat("Slope (b1) =", round(b1, 6), "\n")  
+
+# Same thing as before but using the lm function we saw in class 
+fit = lm(y ~ x, data = df)
+coef(fit)
+```
+
+### C. Plot the data points again using ggplot and add the least squares line to the plot.
+
+```{r}
+ggplot(df, aes(x, y)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Least-squares line on scatter") +
+  theme_minimal()
+```
+
+## 2. The quality of the orange juice produced by a manufacturer (e.g., Minute Maid, Tropicana) is constantly monitored. There are numerous sensory and chemical components that combine to make the best tasting orange juice. For example, one manufacturer has developed a quantitative index of the “sweetness” of orange juice. (The higher the index, the sweeter the juice.) Is there a relationship between the sweetness index and a chemical measure such as the amount of water-soluble pectin (parts per million) in the orange juice? Data collected on these two variables for 24 production runs at a juice manufacturing plant are shown in the table below. Suppose a manufacturer wants to use simple linear regression to predict the sweetness (y) from the amount of pectin (x).
+
+### A. Find the least squares line for the data.
+
+```{r, Warnings=FALSE}
+# Change directory depending on where you have it 
+df2 = read.csv("C:/Users/Brennan_Chan1/Downloads/OJUICE.csv")
+df_data = df2[, 2:3]
+fit2 = lm(formula = SweetIndex ~ Pectin , data = df_data )
+fit2
+```
+
+### B. Plot the data using ggplot and add the least squares line to the plot. Just from examining this plot, do you believe this is a good fit?
+
+```{r}
+df_data |>
+ggplot(aes(x = SweetIndex , y = Pectin)) + geom_point() +
+geom_smooth( method = lm , se = FALSE , color = "red" )
+```
+
+-   I believe this line fits the data provided OK but but not great, there is a lot of variance and outliers within the data leading to the line not capturing the full story of the data.

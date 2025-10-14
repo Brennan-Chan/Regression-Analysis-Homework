@@ -1,0 +1,70 @@
+---
+title: "Homework2"
+subtitle: "Group 10"
+author: "Brennan Chan, INSERT YOUR NAME HERE"
+format: pdf
+editor: visual
+---
+
+# Problem 4
+
+-   A contract engineer at DuPont Corp. studied the rate at which a spilled volatile liquid will spread across a surface (Chemical Engineering Progress, January 2005). Assume 50 gallons of methanol spills onto a level surface outdoors. The engineer used derived empirical formulas (assuming a state of turbulent free convection) to calculate the mass (y, in pounds) of the spill after a period of time (x) ranging from 0 to 60 minutes. The calculated mass values can be found at [link](http://www.jpstats.org/data/LIQUIDSPILL.csv).
+
+```{r, message=FALSE}
+library(tidyverse)
+# changed to read directly from the link 
+df_dupont = read.csv("http://www.jpstats.org/data/LIQUIDSPILL.csv")
+
+# double check whats in here
+head(df_dupont)
+```
+
+## A. Find the least squares line for the data.
+
+```{r}
+# Predicting the Mass using time
+fit = lm(MASS~TIME,data=df_dupont)
+summary(fit)
+```
+
+The fitted least squares regression line is: $$
+E(y) = 5.2207 - 0.1140 \times TIME
+$$
+
+## B. Plot the data using ggplot and add the least squares line to the plot.
+
+```{r}
+df_dupont |> ggplot(aes(x = TIME, y = MASS))+
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
+
+## C. Determine the utility of the model by testing the slope.
+
+```{r}
+summary(fit)
+```
+
+Since the p-value is very small, we reject H~0~ and conclude that TIME is a significant predictor of MASS. Thus, the regression model is useful for describing how the mass of the spill decreases over time.
+
+## D. Comment on the fit of the model.
+
+-   The regression model indicates a strong negative linear relationship between time and mass. The estimated slope is -0.114 (p \< 0.001) showing that mass decreases significantly as time increases. The model explains approximately 85% of the variation in mass (R² = 0.85), suggesting a good fit. The residual standard error of 0.86 is relatively small compared to the response scale, indicating that the model predicts well.
+
+## E. Find a 90% confidence interval for the mean mass of all spills with an elapsed time of 15 minutes.
+
+```{r}
+# Confidence interval at TIME = 15
+predict(fit, newdata = data.frame(TIME = 15), interval = "confidence", level = 0.90)
+```
+
+The 90% regression interval was $$[3.173,\; 3.848]$$
+
+## F. Find a 90% prediction interval for the mass of a single spill with an elapsed time of 15 minutes. result.
+
+```{r}
+# Prediction interval at TIME = 15
+predict(fit, newdata = data.frame(TIME = 15), interval = "prediction", level = 0.90)
+```
+
+The 90% prediction interval was $$[1.997,\; 5.024]$$

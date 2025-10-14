@@ -1,0 +1,476 @@
+---
+title: "Homework 3"
+author: "Group 4: Brennan, Jacob, Peter"
+format: pdf
+editor: visual
+---
+
+## Question 1
+
+### Linearity
+
+```{r}
+#| warning: false
+#| message: false
+library(tidyverse)
+library(lmtest)
+
+ojuice <- read_csv("http://www.jpstats.org/data/OJUICE.csv")
+       
+fit = lm(SweetIndex ~ Pectin, data = ojuice)
+
+ggplot(ojuice, aes(x = Pectin, y = SweetIndex)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x, se = F)
+
+```
+
+The scatterplot suggests the relationship between Pectin and Sweet Index is pretty weak and may not be strictly linear. To examine this further, we check the residuals vs fitted values plot.
+
+```{r}
+#| warning: false
+#| message: false
+dat = tibble(yhat = fit$fitted.values, 
+              e = fit$residuals)
+
+ggplot(dat, aes(x=yhat, y=e))+
+  geom_point()+
+  geom_hline(yintercept = 0, col="red")
+
+```
+
+The residuals exhibits clustering. This indicates the linearity assumption is questionable.
+
+```{r}
+#| warning: false
+#| message: false
+fit_log = lm(log(SweetIndex) ~ Pectin, data = ojuice)
+
+ggplot(tibble(
+  yhat = fit_log$fitted.values,
+  e = fit_log$residuals
+), aes(x = yhat, y = e)) +
+  geom_point() +
+  geom_hline(yintercept = 0, col = "red")
+```
+
+The log transformation reduced some curvature but did not fully resolve the nonlinearity or uneven spread of residuals.
+
+```{r}
+#| warning: false
+#| message: false
+
+summary(fit)
+
+```
+
+The estimated slope is positive ($\hat{\beta}_1 = -0.0023$), suggesting that Pectin is associated with a smaller Sweet Index. The slope is statistically significant at the 5% level ($p = 0.0181$), and the model explains only about 22.9% of the variation in corruption ($R^2 = 0.2286$).
+
+While the evidence from scatterplots, residual diagnostics, transformations did not give us a clear answer, doing a hypthesis test points us to the result that the linear assumption does hold. While a straight-line model is appropriate here, there still may be alternative modeling approaches that would be better.
+
+### Zero Errors
+
+The zero errors assumption requires that the expected value of the error term is zero. $$
+E[\epsilon] = 0
+$$\
+Because our model includes an intercept, the least squares estimation procedure forces the average residual to be zero. Thus, this assumption is satisfied automatically and does not require further testing.
+
+### Constant Variance Assumption
+
+```{r}
+#| warning: false
+#| message: false
+
+ggplot(dat, aes(x = yhat, y = e)) +
+  geom_point() +
+  geom_hline(yintercept = 0, col = "red") +
+  labs(x = "Fitted Values", y = "Residuals",
+       title = "Residuals vs Fitted Values (Constant Variance Check)")
+```
+
+In our case, the spread of residuals is not uniform. The variability appears to be larger at certain ranges of the fitted values, which suggests a possible violation of the constant variance assumption.
+
+Several formal statistical tests can be used here, including Levene’s test and the Brown–Forsythe test, which check for equality of variance across groups. These methods are more common in ANOVA settings.
+
+For regression residuals, however, the Breusch–Pagan test is more directly applicable because it tests whether the variance of the residuals depends on the fitted values.
+
+```{r}
+#| warning: false
+#| message: false
+
+library(lmtest)
+bptest(fit)
+
+```
+
+The residual plot already suggests uneven variance, and the Breusch–Pagan test provides statistical confirmation as the $p-value$ is well above $0.05$. Together, these diagnostics indicate that the constant variance assumption may not hold for this model.
+
+### Normality
+
+```{r}
+#| warning: false
+#| message: false
+
+qqnorm(fit$residuals)
+qqline(fit$residuals, col = "red")
+
+```
+
+The Q–Q plot shows a few deviations from the straight line, particularly at the tails, with a couple potential outliers. This suggests the residuals are potentially not well-approximated by a normal distribution. We then apply the Shapiro–Wilk test for confirmation.
+
+```{r}
+#| warning: false
+#| message: false
+
+shapiro.test(fit$residuals)
+
+```
+
+The test returned a $p-value$ of 0.4547.
+
+-   Null hypothesis: The residuals are normally distributed.
+-   Decision: Since $p > 0.05$, we fail to reject the null hypothesis.
+
+While the Q–Q plot didn't indicate much, the Shapiro–Wilk test indicated that the residuals are normally distributed. The normality assumption does hold for this model.
+
+### Independence of Errors
+
+```{r}
+#| warning: false
+#| message: false
+
+semistudent_resid = fit$residuals / summary(fit)$sigma
+
+dat_outliers = tibble(obs = 1:length(semistudent_resid), resid = semistudent_resid)
+
+ggplot(dat_outliers, aes(x = obs, y = resid)) +
+  geom_point() +
+  geom_hline(yintercept = c(-4, 0, 4), 
+             col = c("red","black","red"), 
+             linetype = c("dashed","solid","dashed")) +
+  labs(x = "Observation", 
+       y = "Semistudentized Residuals",
+       title = "Semistudentized Residuals by Observation")
+```
+
+Observations with semistudentized residuals less than $-4$ or greater than $+4$ are typically flagged as outliers.
+
+The semistudentized residuals show no observations beyond the $\pm 4$ cutoff. This indicates that there are no extreme outliers in the dataset. Moreover, the residuals do not display any systematic pattern across the order of observations, suggesting that the independence of errors assumption is reasonably satisfied.
+
+## Question 2
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(lmtest)
+library(forecast)
+```
+
+Loading in the Data
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dat <- read_csv("http://www.jpstats.org/data/LIQUIDSPILL.csv")
+```
+
+#### Running the linear regression using tidymodels
+
+Creating a linear model
+
+```{r, Message=TRUE}
+lm_model = linear_reg() |>
+  set_engine("lm")
+```
+
+This creates a linear model using the data for analysis.
+
+```{r}
+lm_workflow = workflow() |>
+  add_model(lm_model) |>
+  add_formula(MASS ~ TIME)
+```
+
+The above defines the workflow for the data we are going to use.
+
+```{r}
+lm_fit = lm_workflow |>
+  fit(data = dat)
+```
+
+This is fitting the model using the lm_fit function.
+
+```{r}
+tidy(lm_fit)
+```
+
+These are the coefficients for the linear regression model of time $x$ versus mass $y$. When tested using the tidy function above, the $p-value$ of the slope was found to be $3.26 \times 10^{-10}$, meaning that there is statistically significant evidence to conclude that the slope is not zero. In other words, the slope can be utilized to determine a relationship between $x$, the time, and $y$, the mass.
+
+### Checking for linearity
+
+```{r, message=FALSE, warning=FALSE}
+dat %>%
+  ggplot(aes(x = TIME, y = MASS))+
+  geom_point()+
+  geom_smooth(method = "lm")
+```
+
+Above is the graph of the least squares line as well as the data points.
+
+When looking at the graph of the line of best fit versus the points, it looks like a linear fit is not the best model we could use to portray the relationship between $x$ and $y$. It looks like an exponential model might be a better description for the relationship between mass and time.
+
+```{r}
+predictions = extract_fit_engine(lm_fit) |> 
+  augment()
+
+ggplot(predictions, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(x = "Fitted Values", y = "Residuals", title = "Residuals vs. Fitted Values") +
+  theme_minimal()
+```
+
+This shows us the residuals vs fitted values chart- there is a very clear pattern in the residuals. It appears that it is a parabolic pattern, but since the residuals are not random, this further demonstrates our point that the linearity of the data is violated.
+
+### Checking for homoscedasticity (Constant Variance)
+
+```{r}
+ggplot(predictions, aes(x = .fitted, y = .resid^2)) +
+  geom_point()
+```
+
+It is hard to tell here whether constant variance is violated from this graph because the residuals are so clearly in a pattern.
+
+```{r, warning=FALSE, message=FALSE}
+bptest(predictions)
+```
+
+The above Breusch-Pagan test gives us a $-value$ of 0.5063, which indicates that there is not statistically significant evidence to reject the null hypothesis, which is that homoscedasticity is not violated. In other words, constant variance appears like it is not violated according to the Breusch-Pagan test.
+
+### Checking for normality of the errors
+
+```{r}
+ggplot(predictions, aes(sample = .resid)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(title = "Q-Q Plot of Residuals") +
+  theme_minimal()
+```
+
+There is no evident concavity in the QQ-plot, despite there being a definite curve. It appears to be more S-shaped, and so the normality of the residuals does not appear to be violated based on this plot.
+
+```{r}
+shapiro.test(predictions$.resid)
+```
+
+The Shapiro-Wilk test gives us a $p-value$ of 0.01163, which is interesting. It means that with a chosen confidence level of 95%, we would reject the null. This would mean that the residuals are not normally distributed, and this assumption is violated. However, the graph appears as if the residuals might be normally distributed. Since there are only 23 observations, the Shapiro-Wilk test is not likely to reject the null. Further, this means that the result we got from this test is actually strong evidence to reject the null, which is that the residuals are normally distributed. Overall, I would conclude that the normality of the residuals is violated because of us not having very many data points, and yet the Shapiro-Wilk test still giving us a p-value that is statistically significant evidence to reject the null.
+
+### Checking for Independence of Errors
+
+```{r}
+ggAcf(predictions$.resid)
+```
+
+We have multiple lag points at which the ACF crosses the blue line, indicating autocorrelation. This would violate the independence of the residuals/errors assumption.
+
+```{r, warning=FALSE}
+bgtest(predictions)
+```
+
+The Bruesch-Godfrey test further backs up our conclusion from above. The p-value of $1.5\times 10^{-5}$ indicates that there is statistically significant evidence to reject the null hypothesis, which is that the errors/residuals are independent. Based on both the ACF plot and the Breusch-Godfrey test, there is significant evidence to conclude that the errors/residuals are correlated and not independent.
+
+### Checking for outliers by plotting standardized residuals
+
+```{r}
+View(predictions)
+ggplot(predictions, aes(x = .fitted, y = .std.resid)) +
+  geom_point() +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "red") +
+  labs(x = "Fitted Values", y = "Standardized Residuals", title = "Standardized Residuals vs. Fitted Values") +
+  theme_minimal()
+```
+
+There don't appear to be any obvious outliers besides maybe on the very left edge of the fitted values (appears to be around $-1.6$ when I look at the predictions tibble).
+
+## Question 3.
+
+The Federal Emergency Management Agency (FEMA) provides disaster relief for states impacted by natural disasters (e.g., hurricanes, tornados, floods). Do these bad weather windfalls lead to public corruption? This was the research question of interest in an article published in the Journal of Law and Economics (November 2008). Data on y = average annual number of public corruption convictions (per 100,000 residents) and x = average annual FEMA relief (in dollars) per capita for each of the 50 states were used in the investigation. The data can be found at [Link](http://www.jpstats.org/data/FEMA.csv). Fit a regression model and check all assumptions (including linearity and outliers).
+
+### Answer
+
+Before we Start Lets go over the assumptions for a linear regression model.
+
+1.  **Linearity**\
+    The mean of the response is a linear function of the predictor:\
+
+2.  **Zero Mean of Errors**\
+    The expected value of the random errors is zero:\
+
+3.  **Constant Variance (Homoscedasticity)**\
+    The variance of the random errors is constant for all values of (x):\
+
+4.  **Normality of Errors**\
+    The probability distribution of the errors is normal:\
+
+5.  **Independence of Errors**\
+    The errors associated with any two different observations are independent.
+
+#### Linearity assumption
+
+To start, we fit a simple linear regression model with average annual FEMA relief ($x$) as the predictor and public corruption convictions per 100k residents ($y$) as the response. The scatterplot below overlays the fitted regression line:
+
+```{r, message=FALSE}
+library(tidyverse)
+gov_data = read.csv("http://www.jpstats.org/data/FEMA.csv")
+fit = lm(AACC~AAFEMA, data=gov_data)
+
+# Scatterplot with regression line
+ggplot(gov_data, aes(x = AAFEMA, y = AACC)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "AAFEMA Relief (per capita, $)", 
+       y = "AACC (per 100k residents)",
+       title = "Relationship between FEMA Relief and Corruption Convictions")
+```
+
+The scatterplot suggests the relationship between FEMA relief and corruption is weak and may not be strictly linear. To examine this further, we check the residuals vs fitted values plot.
+
+```{r}
+# Make dataset with fitted values and residuals
+dat2 = tibble(
+  yhat = fit$fitted.values, 
+  e = fit$residuals
+)
+
+# Plot residuals vs fitted values
+ggplot(dat2, aes(x = yhat, y = e)) +
+  geom_point() +
+  geom_hline(yintercept = 0, col = "red") +
+  labs(x = "Fitted Values", y = "Residuals",
+       title = "Residuals vs Fitted Values")
+```
+
+The residuals exhibit curvature and non-random clustering: positive in the mid-range and negative at the extremes. This indicates the linearity assumption is questionable.
+
+We then attempted a log transformation of the response variable to see if it improved the model.
+
+```{r}
+# apply a log transformation on the data 
+fit_log = lm(log(AACC) ~ AAFEMA, data = gov_data)
+
+ggplot(tibble(
+  yhat = fit_log$fitted.values,
+  e = fit_log$residuals
+), aes(x = yhat, y = e)) +
+  geom_point() +
+  geom_hline(yintercept = 0, col = "red") +
+  labs(x = "Fitted Values (log scale)", y = "Residuals",
+       title = "Residuals vs Fitted Values (log-transformed response)")
+```
+
+The log transformation reduced some curvature but did not fully resolve the nonlinearity or uneven spread of residuals.
+
+Finally, we review the regression output.
+
+```{r}
+summary(fit)
+```
+
+The estimated slope is positive ($\hat{\beta}_1 = 0.0054$), suggesting that higher FEMA relief is associated with higher public corruption convictions. However, the slope is not statistically significant at the 5% level ($p = 0.102$), and the model explains only about 5.5% of the variation in corruption ($R^2 = 0.055$).
+
+The evidence from scatterplots, residual diagnostics, transformations, and hypothesis testing all point to the same result: the linearity assumption does not hold. A straight-line model is not appropriate here, and alternative modeling approaches should be considered.
+
+#### Zero Errors Assumption
+
+The zero errors assumption requires that the expected value of the error term is zero. $$
+E[\epsilon] = 0
+$$ Because our model includes an intercept, the least squares estimation procedure forces the average residual to be zero. Thus, this assumption is satisfied automatically and does not require further testing.
+
+#### Constant Variance Assumption
+
+This assumption requires that the variance of the error term is constant for all values of the predictor. $$
+\operatorname{Var}(\epsilon) = \sigma^2
+$$
+
+We begin by examining the residuals vs fitted values plot. If the constant variance assumption holds, the residuals should be evenly scattered around zero with roughly the same vertical spread across the range of fitted values.
+
+```{r}
+ggplot(dat2, aes(x = yhat, y = e)) +
+  geom_point() +
+  geom_hline(yintercept = 0, col = "red") +
+  labs(x = "Fitted Values", y = "Residuals",
+       title = "Residuals vs Fitted Values (Constant Variance Check)")
+```
+
+In our case, the spread of residuals is not uniform. The variability appears to be larger at certain ranges of the fitted values, which suggests a possible violation of the constant variance assumption.
+
+Several formal statistical tests can be used here, including Levene’s test and the Brown–Forsythe test, which check for equality of variance across groups. These methods are more common in ANOVA settings.
+
+For regression residuals, however, the Breusch–Pagan test is more directly applicable because it tests whether the variance of the residuals depends on the fitted values.
+
+```{r}
+library(lmtest)
+bptest(fit)
+```
+
+-   Null hypothesis: The variance of the residuals is constant (homoscedasticity).
+-   Alternative: The variance of the residuals depends on the fitted values (heteroscedasticity).
+
+If the $p-value$ is small (e.g., $p < 0.05$), we reject the null and conclude that the constant variance assumption does not hold. If the $p-value$ is large, we do not have evidence of heteroscedasticity.
+
+The residual plot already suggests uneven variance, and the Breusch–Pagan test provides statistical confirmation as the $p-value$ is well above $0.05$. Together, these diagnostics indicate that the constant variance assumption may not hold for this model.
+
+#### Normality Assumption
+
+The normality assumption requires that the errors are normally distributed. $$
+\epsilon \sim N(0, \sigma^2)
+$$
+
+A quick visual inspection of the residuals suggests that they are not normally distributed. The residual plot shows clear deviations from symmetry and the presence of several outliers, both of which contradict the normality assumption. To Further assess this, we first examine a normal Q–Q plot of the residuals. If the residuals are normally distributed, the points should fall approximately along the 45° reference line.
+
+```{r}
+qqnorm(fit$residuals)
+qqline(fit$residuals, col = "red")
+```
+
+The Q–Q plot shows noticeable deviations from the straight line, particularly at the tails, and several potential outliers. This suggests the residuals are not well-approximated by a normal distribution. We then apply the Shapiro–Wilk test for confirmation.
+
+```{r}
+shapiro.test(fit$residuals)
+```
+
+The test returned a $p-value$ of 0.03897.
+
+-   Null hypothesis: The residuals are normally distributed.
+-   Decision: Since $p < 0.05$, we reject the null hypothesis.
+
+Both the Q–Q plot and the Shapiro–Wilk test indicate that the residuals are not normally distributed. The normality assumption does not hold for this model.
+
+#### Independence of Errors Assumption
+
+The independence assumption requires that the errors associated with different observations are independent of each other. In addition, we should check for outliers, since unusual points can have a large impact on the fitted regression line. Since the effect on the fitted line is determined mainly by how far an observation’s residual is from zero, we will identify potential outliers by examining the semistudentized residuals.
+
+$$
+r_i = \frac{e_i}{s}
+$$
+
+where $e_i$ is the residual for observation $i$ and $s$ is the estimate of the error standard deviation.
+
+```{r}
+# semistudentized residuals
+semistudent_resid = fit$residuals / summary(fit)$sigma
+
+# Plot semistudentized residuals
+dat_outliers = tibble(obs = 1:length(semistudent_resid), resid = semistudent_resid)
+
+ggplot(dat_outliers, aes(x = obs, y = resid)) +
+  geom_point() +
+  geom_hline(yintercept = c(-4, 0, 4), 
+             col = c("red","black","red"), 
+             linetype = c("dashed","solid","dashed")) +
+  labs(x = "Observation", 
+       y = "Semistudentized Residuals",
+       title = "Semistudentized Residuals by Observation")
+```
+
+Observations with semistudentized residuals less than $-4$ or greater than $+4$ are typically flagged as outliers.
+
+The semistudentized residuals show no observations beyond the $\pm 4$ cutoff. This indicates that there are no extreme outliers in the dataset. Moreover, the residuals do not display any systematic pattern across the order of observations, suggesting that the independence of errors assumption is reasonably satisfied.

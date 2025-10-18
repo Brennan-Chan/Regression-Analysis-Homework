@@ -88,7 +88,6 @@ The coefficient of determination is ($R^2 = 0.7768$), and the adjusted ($R^2 = 0
 -   The slope for Score (−965,039) indicates that, holding Events constant, a one-unit increase in Score is associated with an estimated decrease of \$965,039 in mean Earnings.\
 -   The intercept (73,365,196) represents the predicted Earnings when both Events and Score equal 0, though this may not be meaningful in context.
 
-------------------------------------------------------------------------
 
 # Give the equation of the model and the equation of the fitted model for the fit in item 2
 

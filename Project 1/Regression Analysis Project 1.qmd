@@ -1,9 +1,10 @@
 ---
 title: "Regression Analysis Project 1"
-author: "Brennan Chan, Tim McKinley, I forget name sorry"
+author: "Brennan Chan, Tim McKinley, Connor Kelly"
 format: pdf
 editor: visual
 ---
+# Project 1
 
 # Fit a multiple regression model using Earnings as the dependent variable, and Events and Score as the independent variables
 
@@ -48,6 +49,8 @@ anova_multi
 
 ```
 
+# Give the equation of the model and the equation of the fitted model for the fit in item 2
+
 Model Form: E(Earnings∣Events,Score)= $\beta_0 + \beta_1 Events + \beta_2 Score$
 
 Where:
@@ -59,3 +62,5 @@ Where:
 -   $\beta_2$ = Coefficient for Score = -965,039
 
 Fitted model: E(Earnings∣Events,Score)= $73,365,196−116,049(Events)−965,039(Score)$
+
+

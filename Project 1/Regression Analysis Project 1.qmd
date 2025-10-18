@@ -1,0 +1,61 @@
+---
+title: "Regression Analysis Project 1"
+author: "Brennan Chan, Tim McKinley, I forget name sorry"
+format: pdf
+editor: visual
+---
+
+# Fit a multiple regression model using Earnings as the dependent variable, and Events and Score as the independent variables
+
+First lets load in the packages and data.
+
+```{r, Messages=FALSE}
+# Core packages (tidymodels but no pipes)
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(tidymodels))
+
+# Read the data (put Golf.csv in your working directory)
+golf <- read.csv("Golf.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# Peek
+str(golf)
+summary(golf)
+
+```
+
+Now we can fit the multiple regression model
+
+```{r}
+# Model spec (no %>%): use set_engine(linear_reg(), "lm")
+mod_spec <- set_engine(linear_reg(), "lm")
+
+# Fit model
+fit_multi <- fit(mod_spec, Earnings ~ Events + Score, data = golf)
+
+# Pull the underlying lm object for classical outputs
+lm_multi <- fit_multi$fit
+
+# Coefficient table (t-tests) & overall fit (R^2, adj R^2, F-test)
+coef_table <- broom::tidy(lm_multi)        # term, estimate, std.error, statistic (t), p.value
+fit_glance <- broom::glance(lm_multi)      # r.squared, adj.r.squared, sigma, statistic (F), p.value, AIC, BIC
+
+# ANOVA table (global F test details)
+anova_multi <- anova(lm_multi)
+
+coef_table
+fit_glance
+anova_multi
+
+```
+
+Model Form: E(Earnings∣Events,Score)= $\beta_0 + \beta_1 Events + \beta_2 Score$
+
+Where:
+
+-   $\beta_0$ = Intercept = 73,365,196
+
+-   $\beta_1$ = Coefficient for Events = -116,049
+
+-   $\beta_2$ = Coefficient for Score = -965,039
+
+Fitted model: E(Earnings∣Events,Score)= $73,365,196−116,049(Events)−965,039(Score)$

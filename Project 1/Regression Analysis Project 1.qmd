@@ -4,6 +4,7 @@ author: "Brennan Chan, Tim McKinley, Connor Kelly"
 format: pdf
 editor: visual
 ---
+
 # Project 1
 
 # Fit a multiple regression model using Earnings as the dependent variable, and Events and Score as the independent variables
@@ -11,43 +12,83 @@ editor: visual
 First lets load in the packages and data.
 
 ```{r, Messages=FALSE}
-# Core packages (tidymodels but no pipes)
+# Core packages
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(tidymodels))
 
-# Read the data (put Golf.csv in your working directory)
-golf <- read.csv("Golf.csv", header = TRUE, stringsAsFactors = FALSE)
+# only use when initally viewing the data 
+# suppressPackageStartupMessages(library(broom))
+
+golf = read_csv("Golf.csv", show_col_types = FALSE)
 
 # Peek
-str(golf)
 summary(golf)
-
 ```
 
 Now we can fit the multiple regression model
 
 ```{r}
-# Model spec (no %>%): use set_engine(linear_reg(), "lm")
-mod_spec <- set_engine(linear_reg(), "lm")
-
-# Fit model
-fit_multi <- fit(mod_spec, Earnings ~ Events + Score, data = golf)
-
-# Pull the underlying lm object for classical outputs
-lm_multi <- fit_multi$fit
-
-# Coefficient table (t-tests) & overall fit (R^2, adj R^2, F-test)
-coef_table <- broom::tidy(lm_multi)        # term, estimate, std.error, statistic (t), p.value
-fit_glance <- broom::glance(lm_multi)      # r.squared, adj.r.squared, sigma, statistic (F), p.value, AIC, BIC
-
-# ANOVA table (global F test details)
-anova_multi <- anova(lm_multi)
-
-coef_table
-fit_glance
-anova_multi
+# use set_engine(linear_reg(), "lm")
+mod_spec = set_engine(linear_reg(), "lm")
+fit_multi = fit(mod_spec, Earnings ~ Events + Score, data = golf)
+lm_multi = fit_multi$fit 
 
 ```
+
+## Comment on the global F-test, the individual t-tests, and the coefficient of determination.
+
+```{r}
+# Looking at the global F-Test
+summary(lm_multi)
+```
+
+The fitted regression model is
+
+$$
+\widehat{\text{Earnings}} = 73{,}365{,}196 - 116{,}049(\text{Events}) - 965{,}039(\text{Score})
+$$
+
+
+### Model Utility (F-Test)
+
+Hypotheses:
+$$
+H_0: \beta_1 = \beta_2 = 0 \\
+H_a: \text{At least one } \beta_j \neq 0
+$$
+
+From the summary output:\
+$$
+F(2,18) = 31.33,\quad p = 1.374\times10^{-6}
+$$
+
+Because the p-value is less than 0.05, we reject $H_0$. There is sufficient evidence that at least one of the slope coefficients differs from zero. Therefore, the regression model provides useful linear predictive information for Earnings.
+
+### Individual Slope Tests (t-Tests)
+
+For each predictor, we test (H_0:\beta\_j = 0) versus (H_a:\beta\_j \neq 0).
+
+| Predictor | Estimate | t-value | p-value   | Decision    |
+|-----------|----------|---------|-----------|-------------|
+| Events    | −116,049 | −2.668  | 0.0157    | Significant |
+| Score     | −965,039 | −5.940  | 1.27×10⁻⁵ | Significant |
+
+-   For Events: ($t = -2.67, p = 0.0157 < 0.05$). We reject (H_0) and conclude that Events has a significant linear relationship with Earnings when Score is held constant.\
+-   For Score: ($t = -5.94, p < 0.001$). We reject (H_0) and conclude that Score is also a significant linear predictor of Earnings\* when \*Events is held constant.
+
+Thus, both predictors make significant contributions to explaining variation in Earnings.
+
+### Coefficient of Determination
+
+The coefficient of determination is ($R^2 = 0.7768$), and the adjusted ($R^2 = 0.752$). This indicates that approximately 77.68% of the variability in Earnings is explained by the linear relationship with Events and Score, and after adjusting for the number of predictors, about \$75.2% of the variation is still explained.
+
+### Interpretation of Coefficients
+
+-   The slope for Events (−116,049) indicates that, holding Score constant, each additional event is associated with an estimated decrease of \$116,049 in mean Earnings.\
+-   The slope for Score (−965,039) indicates that, holding Events constant, a one-unit increase in Score is associated with an estimated decrease of \$965,039 in mean Earnings.\
+-   The intercept (73,365,196) represents the predicted Earnings when both Events and Score equal 0, though this may not be meaningful in context.
+
+------------------------------------------------------------------------
 
 # Give the equation of the model and the equation of the fitted model for the fit in item 2
 
@@ -62,5 +103,3 @@ Where:
 -   $\beta_2$ = Coefficient for Score = -965,039
 
 Fitted model: E(Earnings∣Events,Score)= $73,365,196−116,049(Events)−965,039(Score)$
-
-

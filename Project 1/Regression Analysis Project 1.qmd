@@ -7,7 +7,8 @@ editor: visual
 
 # Project 1
 
-# Fit a multiple regression model using Earnings as the dependent variable, and Events and Score as the independent variables
+## Part A: 
+###  Fit a multiple regression model using Earnings as the dependent variable, and Events and Score as the independent variables
 
 First lets load in the packages and data.
 
@@ -35,7 +36,7 @@ lm_multi = fit_multi$fit
 
 ```
 
-## Comment on the global F-test, the individual t-tests, and the coefficient of determination.
+### Comment on the global F-test, the individual t-tests, and the coefficient of determination.
 
 ```{r}
 # Looking at the global F-Test
@@ -49,7 +50,7 @@ $$
 $$
 
 
-### Model Utility (F-Test)
+#### Model Utility (F-Test)
 
 Hypotheses:
 $$
@@ -64,7 +65,7 @@ $$
 
 Because the p-value is less than 0.05, we reject $H_0$. There is sufficient evidence that at least one of the slope coefficients differs from zero. Therefore, the regression model provides useful linear predictive information for Earnings.
 
-### Individual Slope Tests (t-Tests)
+#### Individual Slope Tests (t-Tests)
 
 For each predictor, we test (H_0:\beta\_j = 0) versus (H_a:\beta\_j \neq 0).
 
@@ -78,18 +79,18 @@ For each predictor, we test (H_0:\beta\_j = 0) versus (H_a:\beta\_j \neq 0).
 
 Thus, both predictors make significant contributions to explaining variation in Earnings.
 
-### Coefficient of Determination
+#### Coefficient of Determination
 
 The coefficient of determination is ($R^2 = 0.7768$), and the adjusted ($R^2 = 0.752$). This indicates that approximately 77.68% of the variability in Earnings is explained by the linear relationship with Events and Score, and after adjusting for the number of predictors, about \$75.2% of the variation is still explained.
 
-### Interpretation of Coefficients
+#### Interpretation of Coefficients
 
 -   The slope for Events (−116,049) indicates that, holding Score constant, each additional event is associated with an estimated decrease of \$116,049 in mean Earnings.\
 -   The slope for Score (−965,039) indicates that, holding Events constant, a one-unit increase in Score is associated with an estimated decrease of \$965,039 in mean Earnings.\
 -   The intercept (73,365,196) represents the predicted Earnings when both Events and Score equal 0, though this may not be meaningful in context.
 
 
-# Give the equation of the model and the equation of the fitted model for the fit in item 2
+### Give the equation of the model and the equation of the fitted model for the fit in item 2
 
 Model Form: E(Earnings∣Events,Score)= $\beta_0 + \beta_1 Events + \beta_2 Score$
 
@@ -102,3 +103,28 @@ Where:
 -   $\beta_2$ = Coefficient for Score = -965,039
 
 Fitted model: E(Earnings∣Events,Score)= $73,365,196−116,049(Events)−965,039(Score)$
+
+## Part B:
+### Which of the independent variables, Events or Score, would you choose if you want
+only one predictor?
+```{r}
+mod_spec = set_engine(linear_reg(), "lm")
+
+fit_events = fit(mod_spec, Earnings ~ Events, data = golf)
+fit_score  = fit(mod_spec, Earnings ~ Score,  data = golf)
+
+g_events = glance(fit_events$fit)
+g_score  = glance(fit_score$fit)
+
+adjR2_events = g_events$adj.r.squared
+adjR2_score = g_score$adj.r.squared
+AIC_events = g_events$AIC
+AIC_score = g_score$AIC
+
+print(c(adjR2_events = adjR2_events, adjR2_score = adjR2_score))
+print(c(AIC_events = AIC_events, AIC_score = AIC_score))
+
+```
+The model using Score has a substantially larger adjusted $R^2$ (0.6729 vs 0.3045) and a smaller AIC (646.42 vs 662.22). Therefore, if restricted to one predictor, we retain Score as the single predictor of Earnings.
+
+## Part C: 

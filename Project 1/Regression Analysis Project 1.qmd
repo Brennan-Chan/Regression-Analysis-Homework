@@ -103,9 +103,7 @@ Fitted model: E(Earnings∣Events,Score)= $73,365,196−116,049(Events)−965,03
 
 ## Part B:
 
-### Which of the independent variables, Events or Score, would you choose if you want
-
-only one predictor?
+### Which of the independent variables, Events or Score, would you choose if you want only one predictor?
 
 ```{r}
 mod_spec = set_engine(linear_reg(), "lm")
@@ -116,17 +114,14 @@ fit_score  = fit(mod_spec, Earnings ~ Score,  data = golf)
 g_events = glance(fit_events$fit)
 g_score  = glance(fit_score$fit)
 
-adjR2_events = g_events$adj.r.squared
-adjR2_score = g_score$adj.r.squared
-
-AIC_events = g_events$AIC
-AIC_score = g_score$AIC
-
-print(c(adjR2_events = adjR2_events, adjR2_score = adjR2_score))
-print(c(AIC_events = AIC_events, AIC_score = AIC_score))
+g_events
 ```
 
-The model using Score has a substantially larger adjusted $R^2$ (0.6729 vs 0.3045) and a smaller AIC (646.42 vs 662.22). Therefore, if restricted to one predictor, we retain Score as the single predictor of Earnings.
+```{r}
+g_score
+```
+
+The model using Score has a substantially larger adjusted $R^2$ (0.6729 vs 0.3045). Therefore, if restricted to one predictor, we retain Score as the single predictor of Earnings.
 
 ### Fit a model with the independent variable chosen in the previous step. Comment on the global F-test, the individual t-test, and the coefficient of determination.
 

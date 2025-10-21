@@ -17,10 +17,6 @@ First lets load in the packages and data.
 # Core packages
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(tidymodels))
-
-# only use when initally viewing the data 
-# suppressPackageStartupMessages(library(broom))
-
 golf = read_csv("Golf.csv", show_col_types = FALSE)
 
 # Peek
@@ -31,6 +27,7 @@ Now we can fit the multiple regression model
 
 ```{r}
 # use set_engine(linear_reg(), "lm")
+dat_recipe = recipe(Earnings ~ Events + Score, data = golf)
 mod_spec = set_engine(linear_reg(), "lm")
 fit_multi = fit(mod_spec, Earnings ~ Events + Score, data = golf)
 lm_multi = fit_multi$fit 
@@ -68,15 +65,15 @@ Because the p-value is less than 0.05, we reject $H_0$. There is sufficient evid
 
 #### Individual Slope Tests (t-Tests)
 
-For each predictor, we test (H_0:\beta\_j = 0) versus (H_a:\beta\_j \neq 0).
+For each predictor, we test ($H_0:\beta\_j = 0$) versus ($H_a:\beta\_j \neq 0$).
 
 | Predictor | Estimate | t-value | p-value   | Decision    |
 |-----------|----------|---------|-----------|-------------|
 | Events    | −116,049 | −2.668  | 0.0157    | Significant |
 | Score     | −965,039 | −5.940  | 1.27×10⁻⁵ | Significant |
 
--   For Events: ($t = -2.67, p = 0.0157 < 0.05$). We reject (H_0) and conclude that Events has a significant linear relationship with Earnings when Score is held constant.\
--   For Score: ($t = -5.94, p < 0.001$). We reject (H_0) and conclude that Score is also a significant linear predictor of Earnings\* when \*Events is held constant.
+-   For Events: ($t = -2.67, p = 0.0157 < 0.05$). We reject ($H_0$) and conclude that Events has a significant linear relationship with Earnings when Score is held constant.\
+-   For Score: ($t = -5.94, p < 0.001$). We reject ($H_0$) and conclude that Score is also a significant linear predictor of Earnings when Events is held constant.
 
 Thus, both predictors make significant contributions to explaining variation in Earnings.
 
@@ -121,6 +118,7 @@ g_score  = glance(fit_score$fit)
 
 adjR2_events = g_events$adj.r.squared
 adjR2_score = g_score$adj.r.squared
+
 AIC_events = g_events$AIC
 AIC_score = g_score$AIC
 
@@ -180,6 +178,24 @@ Thus, approximately 68.86% of the variation in Earnings is explained by its line
 -   Slope ($\hat\beta_1=-1,125,076$). Holding other factors fixed (simple model), a one-unit increase in Score is associated with an estimated decrease of \$1,125,076 in the mean Earnings.\
 -   Intercept ($\hat\beta_0=81{,}760,015$). Predicted Earnings when Score=0; this may not be meaningful in context.
 
-------------------------------------------------------------------------
+### Equation of the model and the equation of the fitted model for the score as the predictor variable
+
+Model Form: $E(\text{Earnings} \mid \text{Score}) = \beta_0 + \beta_1(\text{Score})$
+
+Fitted Model: $\widehat{\text{Earnings}} = 81,760,015 - 1,125,076(\text{Score})$
+
+-   The first equation (the “model”) shows the general population regression function using the unknown parameters ($\beta_0$) and ($\beta_1$).\
+-   The second equation (the “fitted model”) replaces those unknown parameters with their estimates ($\hat\beta_0$) and ($\hat\beta_1$) obtained from the sample data.
 
 ## Part C:
+
+### Compare the model that uses both predictors and the model that just uses one predictor.
+
+| Model               | Predictors       | Adjusted ($R^2$) |
+|:--------------------|:-----------------|:----------------:|
+| Multiple Regression | Events and Score |      0.752       |
+| Simple Regression   | Score only       |      0.672       |
+
+The multiple regression model with Events and Score explains a larger proportion of the variation in Earnings (adjusted ($R^2 = 0.752$)) than the simple regression model using only Score (adjusted ($R^2 = 0.672$)).
+
+Because the increase in explained variability is meaningful and both predictors are significant in the multiple model, we prefer the multiple regression model. This model provides greater explanatory power while still maintaining a relatively simple structure with only two predictors.

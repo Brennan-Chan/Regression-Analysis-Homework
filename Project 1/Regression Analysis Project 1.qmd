@@ -79,7 +79,7 @@ Thus, both predictors make significant contributions to explaining variation in 
 
 #### Coefficient of Determination
 
-The coefficient of determination is ($R^2 = 0.7768$), and the adjusted ($R^2 = 0.752$). This indicates that approximately 77.68% of the variability in Earnings is explained by the linear relationship with Events and Score, and after adjusting for the number of predictors, about 75.2% of the variation is still explained.
+The coefficient of determination is ($R^2 = 0.7768$). This indicates that approximately 77.68% of the variability in Earnings is explained by the linear relationship with Events and Score.
 
 #### Interpretation of Coefficients
 
@@ -124,6 +124,11 @@ g_score
 The model using Score has a substantially larger adjusted $R^2$ (0.6729 vs 0.3045). Therefore, if restricted to one predictor, we retain Score as the single predictor of Earnings.
 
 ### Fit a model with the independent variable chosen in the previous step. Comment on the global F-test, the individual t-test, and the coefficient of determination.
+
+```{r}
+mod_spec = set_engine(linear_reg(), "lm")
+fit_score  = fit(mod_spec, Earnings ~ Score,  data = golf)
+```
 
 Using Score as the sole predictor lets see what the fit of the model looks like:
 

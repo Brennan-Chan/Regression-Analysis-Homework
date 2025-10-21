@@ -1,0 +1,163 @@
+---
+title: "Regression Analysis Project 1"
+author: "Brennan Chan, Tim McKinley, Connor Kelly"
+format: pdf
+editor: visual
+---
+
+# Fit a multiple regression model using Earnings as the dependent variable, and Events and Score as the independent variable
+
+First lets load in the packages and data.
+
+```{r, Messages=FALSE}
+# Core packages
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(tidymodels))
+golf = read_csv("Golf.csv", show_col_types = FALSE)
+
+# Peek
+summary(golf)
+```
+
+Now we can fit the multiple regression model.
+
+```{r}
+golf_recipe = recipe(Earnings ~ Events + Score, data = golf)
+
+lm_model = linear_reg() |>
+  set_engine("lm")
+
+lm_workflow = workflow() |>
+  add_recipe(golf_recipe) |>
+  add_model(lm_model)
+
+lm_fit = lm_workflow |>
+  fit(data = golf)
+
+#coeffecients
+lm_fit |> tidy()
+#F-test p-value & r squared
+lm_fit |> glance()
+# analysis of variance table 
+lm_fit |> extract_fit_engine() |> anova()
+```
+
+## Comments
+
+### Individual Slope Tests
+
+```{r}
+#coeffecients
+lm_fit |> tidy()
+```
+
+For each predictor, we test ($H_0:\beta_j = 0$) versus ($H_a:\beta_j \neq 0$).
+
+| Predictor | Estimate | t-value | p-value   | Decision    |
+|-----------|----------|---------|-----------|-------------|
+| Events    | −116,049 | −2.668  | 0.0157    | Significant |
+| Score     | −965,039 | −5.940  | 1.27×10⁻⁵ | Significant |
+
+-   For Events: ($t = -2.67, p = 0.0157 < 0.05$). We reject ($H_0$) and conclude that Events has a significant linear relationship with Earnings when Score is held constant.\
+-   For Score: ($t = -5.94, p < 0.001$). We reject ($H_0$) and conclude that Score is also a significant linear predictor of Earnings when Events is held constant.
+
+Thus, both predictors make significant contributions to explaining variation in Earnings.
+
+### F-Test
+
+Hypotheses:
+
+$$
+H_0: \beta_1 = \beta_2 = 0 \\
+H_a: \text{At least one } \beta_j \neq 0
+$$
+
+$$
+F(2,18) = 31.33,\quad p = 1.374\times10^{-6}
+$$
+
+Because the p-value is less than 0.05, we reject $H_0$. There is sufficient evidence that at least one of the slope coefficients differs from zero. Therefore, the regression model provides useful linear predictive information for Earnings.
+
+### Coefficient of Determination
+
+The coefficient of determination is ($R^2 = 0.7768$). This indicates that approximately 77.68% of the variability in Earnings is explained by the linear relationship with Events and Score.
+
+# Give the equation of the model and the equation of the fitted model
+
+The regression model is given by:\
+$$
+\widehat{\text{Earnings}} = 73{,}365{,}196 - 116{,}049(\text{Events}) - 965{,}039(\text{Score})
+$$ Where:
+
+-   $\beta_0$ = Intercept = 73,365,196
+
+-   $\beta_1$ = Coefficient for Events = -116,049
+
+-   $\beta_2$ = Coefficient for Score = -965,039
+
+The fitted model is given by:
+
+$$
+E(Earnings∣Events,Score)=73,365,196−116,049(Events)−965,039(Score)
+$$
+
+# Which of the independent variables, Events or Score, would you choose if you want only one predictor?
+
+We think score makes more sense to use because a higher score in golf just means you played worse. That should impact the earnings as a lower score means one is golfing better, and in turn probably earned more.
+
+# Fit a model with the independent variable chosen (Score) from the previous step
+
+```{r}
+fit_score = lm(Earnings ~ Score, data = golf)
+summary(fit_score)
+```
+
+## Comments
+
+### F-test
+
+Hypotheses:\
+$$
+H_0:\beta_1=0 \quad\text{vs}\quad H_a:\beta_1\neq 0.
+$$\
+
+From the summary output:\
+$$
+F(1,19)=42.01,\quad p=3.279\times 10^{-6}.
+$$\
+
+Because the p-value is less than 0.05, we reject ($H_0$). There is sufficient evidence that the model provides useful linear predictive information for Earnings.
+
+### t-test
+
+For the slope of Score:\
+$$
+t=-6.482,\quad p=3.28\times 10^{-6}.
+$$\
+Since ($p<0.05$), we reject ($H_0$) and conclude that Score is a significant linear predictor of Earnings.
+
+#### Coefficient of Determination
+
+$$
+R^2 = 0.6886
+$$\
+Thus, approximately 68.86% of the variation in Earnings is explained by its linear relationship with Score.
+
+# Give the equation of the model and the equation of the fitted model.
+
+Model Form: $E(\text{Earnings} \mid \text{Score}) = \beta_0 + \beta_1(\text{Score})$
+
+Fitted Model: $\widehat{\text{Earnings}} = 81,760,015 - 1,125,076(\text{Score})$
+
+Where: - $\beta_0$ = Intercept = 81,760,015 - $\beta_1$ = Coefficient for Score = -1,125,076
+
+# Compare the model that uses both predictors and the model that just uses one predictor.
+
+| Model               | Predictors       | Adjusted ($R^2$) |
+|:--------------------|:-----------------|:----------------:|
+| Multiple Regression | Events and Score |      0.752       |
+| Simple Regression   | Score only       |      0.672       |
+
+The multiple regression model with Events and Score explains a larger proportion of the variation in Earnings (adjusted ($R^2 = 0.752$)) than the simple regression model using only Score (adjusted ($R^2 = 0.672$)).
+
+Because the increase in explained variability is meaningful and both predictors are significant in the multiple model, we prefer the multiple regression model. This model provides greater explanatory power while still maintaining a relatively simple structure with only two predictors.

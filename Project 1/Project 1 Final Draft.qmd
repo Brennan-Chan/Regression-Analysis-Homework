@@ -1,6 +1,6 @@
 ---
 title: "Regression Analysis Project 1"
-author: "Brennan Chan, Tim McKinley, Connor Kelly"
+author: "Group 10: Brennan Chan, Tim McKinley, Connor Kelly"
 format: pdf
 editor: visual
 ---
@@ -56,7 +56,7 @@ For each predictor, we test ($H_0:\beta_j = 0$) versus ($H_a:\beta_j \neq 0$).
 | Predictor | Estimate | t-value | p-value   | Decision    |
 |-----------|----------|---------|-----------|-------------|
 | Events    | −116,049 | −2.668  | 0.0157    | Significant |
-| Score     | −965,039 | −5.940  | 1.27×10⁻⁵ | Significant |
+| Score     | −965,039 | −5.940  | $1.27\times10^{-5}$ | Significant |
 
 -   For Events: ($t = -2.67, p = 0.0157 < 0.05$). We reject ($H_0$) and conclude that Events has a significant linear relationship with Earnings when Score is held constant.\
 -   For Score: ($t = -5.94, p < 0.001$). We reject ($H_0$) and conclude that Score is also a significant linear predictor of Earnings when Events is held constant.

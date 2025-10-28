@@ -1,0 +1,109 @@
+---
+title: "HomeWork 5"
+author: Skibidi Brennan,  
+format: pdf
+editor: visual
+---
+
+# Question 1
+
+```{r}
+suppressPackageStartupMessages(library(tidymodels))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(broom))
+suppressPackageStartupMessages(library(GGally))
+suppressPackageStartupMessages(library(car))
+```
+
+Loading in the Data from problem 2 of Homework 4:
+
+```{r}
+mlb_data = read_csv("http://www.jpstats.org/Regression/data/MLBRUNS2017.csv", show_col_types = FALSE)
+```
+
+## Find the VIFs for the predictor variables.
+
+```{r}
+data_recipe = recipe(RUNS ~ WALKS + SINGLES + DOUBLES + TRIPLES + 
+  HOMERUNS + STOLEBASES + CAUGHTSTEAL + STRIKEOUTS + GRNDOUTS, data = mlb_data)
+
+lin_spec = linear_reg() |>
+  set_engine("lm")
+
+wf_plain = workflow() |>
+  add_recipe(data_recipe) |>
+  add_model(lin_spec) 
+  
+lm_fit_plain = wf_plain |>
+  fit(data = mlb_data)
+
+tidy_output = lm_fit |> tidy()
+
+lm_fit_plain |> extract_fit_engine() |> vif()
+```
+
+All of the predictor variables' VIF values are below 5 and within the range of one to four. Since the values are below 5, there is not enough evidence to suggest that multicolinearity is high.
+
+## Use the model fitted in problem 2 of HW 4 to find a 99% confidence interval for a new player.
+
+We will use the average values of the data set for the new player data to predict at.
+```{r}
+new_player_data = mlb_data |> summarize(across(c(WALKS, SINGLES, DOUBLES, TRIPLES, HOMERUNS,
+                          STOLEBASES, CAUGHTSTEAL, STRIKEOUTS, GRNDOUTS),mean))
+predict(lm_fit_plain, new_player_data, type = "conf_int", level = 0.99)
+```
+
+
+## Find the principal components for these variables (Applying PCA on the dataset). Determine how many PCs to keep and comment on why you chose this number.
+```{r}
+rec_pca <- recipe(RUNS ~ WALKS + SINGLES + DOUBLES + TRIPLES + HOMERUNS +
+                    STOLEBASES + CAUGHTSTEAL + STRIKEOUTS + GRNDOUTS, 
+                  data = mlb_data) |>
+  step_normalize(all_predictors()) |>
+  step_pca(all_predictors(), num_comp = 7)
+
+prepped = rec_pca |> prep()
+
+pca_results = prepped |> tidy(number = 2, type="variance")
+print(pca_results)
+```
+We see from the PCA results that the cumulative explained variance of 7 PCs is roughly 95%. Thus, we can just use the first seven PCs and a couple degrees of freedom since we will be using less coefficients in the model.
+
+Now we will extract our chosen 7 PC's to a new tibble.
+```{r}
+pca_data = prepped |> bake(predictor_data)
+```
+
+## Fit a regression model with the PCs found in the earlier part. Find and comment on the coefficient of determination for this fit.
+```{r}
+dat_recipe = recipe(RUNS ~ WALKS + SINGLES + DOUBLES + TRIPLES + HOMERUNS +
+                    STOLEBASES + CAUGHTSTEAL + STRIKEOUTS + GRNDOUTS, data = mlb_data) |>
+  step_normalize(all_predictors()) |>
+  step_pca(all_predictors(), num_comp = 7)
+
+lm_model_pca = linear_reg() |>
+  set_engine("lm")
+
+lm_workflow_pca = workflow() |>
+  add_recipe(dat_recipe) |> 
+  add_model(lm_model_pca)
+
+lm_fit_pca = lm_workflow_pca |>
+  fit(data = mlb_data)
+
+pca_tidy_model = lm_fit_pca |> tidy()
+
+r2_plain = glance(lm_fit_plain)$r.squared
+r2_pcr = glance(lm_fit_pca)$r.squared
+tibble(model = c("Original", "PCR (7 PCs)"), R2 = c(r2_plain, r2_pcr))
+```
+
+The coefficient of determination for the PCR model using seven principal components was $R^2=0.9159$, compared with $R^2=0.9278$ for the original regression. This means that 91.59% of the variability can be explained by the 7 PC linear model. 
+
+```{r}
+fit = lm_fit_pca |>  extract_fit_engine()
+
+fit |> vif()
+```
+Although PCR explains slightly less variation, it mitigates multicollinearity. Furthermore, the VIFs for the PC predictors should be ~1.

@@ -1,0 +1,261 @@
+---
+title: "Homework 6"
+author: "Brennan Chan"
+format: pdf
+editor: visual
+---
+
+1. How much influence does the media have on one’s decision to undergo cosmetic surgery? This was the question of interest in Body Image: An International Journal of Research (March 2010). In the study, 170 college students answered questions about their impressions of reality TV shows featuring cosmetic surgery. The five variables analyzed in the study were measured as follows:
+
+DESIRE—(response variable) scale ranging from 5 to 25, where the higher the value, the greater the interest in having cosmetic surgery
+GENDER—1 if male, 0 if female
+SELFESTM—scale ranging from 4 to 40, where the higher the value, the greater the level of self-esteem
+BODYSAT—scale ranging from 1 to 9, where the higher the value, the greater the satisfaction with one’s own body
+IMPREAL—scale ranging from 1 to 7, where the higher the value, the more one believes reality television shows featuring cosmetic surgery are realistic. The data for the study are saved in the BDYIMG file (www.jpstats.org/Regression/data/BDYIMG.csv). 
+
+Load in the dataset 
+```{r}
+# might want to prune unneeded packages
+suppressPackageStartupMessages(library(tidymodels))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(broom))
+suppressPackageStartupMessages(library(GGally))
+suppressPackageStartupMessages(library(car))
+suppressPackageStartupMessages(library(olsrr))
+
+tv_dat <- read_csv(curl::curl("http://www.jpstats.org/Regression/data/BDYIMG.csv"), 
+                   show_col_types = FALSE)
+```
+
+a. Examine the linearity assumption and make any transformation that are necessary.
+```{r}
+tv_dat |> 
+  select(GENDER, SELFESTM, BODYSAT, IMPREAL, DESIRE) |>
+  ggpairs(progress = FALSE)
+```
+Linearity assumption seems good to me however selfestm seems like it could be linear.
+
+
+Changing selfestm for comparison 
+```{r}
+tv_dat |> 
+  mutate(LOG_SELFESTM = log(SELFESTM)) |> 
+  select(GENDER, LOG_SELFESTM, BODYSAT, IMPREAL, DESIRE) |>
+  ggpairs(progress = FALSE)
+```
+
+
+
+b. Fit a multiple regression model to the data using all predictors. Consider adding an interaction term between GENDER and IMPREAL. Decide if this interaction term should be included in the model. 
+```{r}
+# no interaction term
+data_recipe = recipe(DESIRE ~ GENDER + SELFESTM + BODYSAT + IMPREAL, data = tv_dat)
+
+# interaction term 
+data_recipe_int = recipe(DESIRE ~ GENDER + SELFESTM + BODYSAT + IMPREAL, data = tv_dat) |>
+  step_interact(~ GENDER:IMPREAL)
+
+lin_spec = linear_reg() |>
+  set_engine("lm")
+
+wf = workflow() |>
+  add_recipe(data_recipe) |>
+  add_model(lin_spec) 
+  
+lm_fit = wf |>
+  fit(data = tv_dat)
+
+wf_int = workflow() |>
+  add_recipe(data_recipe_int) |>
+  add_model(lin_spec) 
+  
+lm_fit_int = wf_int |>
+  fit(data = tv_dat)
+
+# extract the underlying lm objects
+lm_main <- lm_fit |> extract_fit_engine()
+lm_int  <- lm_fit_int |> extract_fit_engine()
+
+anova(lm_main, lm_int)
+
+
+lm_fit |> glance()
+lm_fit_int |> glance()
+```
+To decide whether the interaction term GENDER × IMPREAL should be included, we compared the additive model (GENDER, SELFESTM, BODYSAT, IMPREAL) to the larger model that also contained the GENDER × IMPREAL interaction using a nested F-test. Since this p-value is less than 0.05, there is sufficient evidence to conclude that the interaction coefficient is different from 0, so the interaction term should be retained in the model.
+
+
+Transformed SELFESTM model - it seemed to have worse results than the untransformed modes. So I think we should not include it in the homework
+```{r}
+# no interaction term
+data_recipe_trans = recipe(DESIRE ~ GENDER + SELFESTM + BODYSAT + IMPREAL, data = tv_dat) |>
+  step_mutate(LOG_SELFESTM = log(SELFESTM)) |>
+  step_rm(SELFESTM)
+
+# interaction term 
+data_recipe_int_trans = recipe(DESIRE ~ GENDER + SELFESTM + BODYSAT + IMPREAL, data = tv_dat) |>
+  step_interact(~ GENDER:IMPREAL) |>
+  step_mutate(LOG_SELFESTM = log(SELFESTM)) |>
+  step_rm(SELFESTM)
+
+lin_spec_trans = linear_reg() |>
+  set_engine("lm")
+
+wf_trans = workflow() |>
+  add_recipe(data_recipe_trans) |>
+  add_model(lin_spec_trans) 
+  
+lm_fit_trans = wf_trans |>
+  fit(data = tv_dat)
+
+wf_int_trans = workflow() |>
+  add_recipe(data_recipe_int_trans) |>
+  add_model(lin_spec) 
+  
+lm_fit_int_trans = wf_int |>
+  fit(data = tv_dat)
+
+# extract the underlying lm objects
+lm_main <- lm_fit |> extract_fit_engine()
+lm_int  <- lm_fit_int |> extract_fit_engine()
+
+anova(lm_main, lm_int)
+
+
+lm_fit_trans |> glance()
+lm_fit_int_trans |> glance()
+```
+
+
+
+c. Give the equation of the resulting fitted model found in part b. 
+```{r}
+lm_fit_int |> tidy()
+```
+REMEMBER TO WRITE THE FORMULA LATER 
+
+
+d. Check for multicollinearity in the resulting model found in part b. Comment on what you find.
+```{r}
+pred <- extract_fit_engine(lm_fit_int) |> augment()
+
+pred |>
+  ggplot(aes(x = .fitted, y = .resid)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0, linetype = "dashed") + 
+  labs(x = "Fitted Values", 
+       y = "Residuals", 
+       title = "Residuals vs. Fitted Values")
+  geom_hline()
+```
+There doesnt appear to be any non linear patterns 
+
+2. The Federal Trade Commission (FTC) annually ranks varieties of domestic cigarettes according to their tar, nicotine, and carbon monoxide contents. The U.S. surgeon general considers each of these three substances hazardous to a smoker’s health. Past studies have shown that increases in the tar and nicotine contents of a cigarette are accompanied by an increase in the carbon monoxide emitted from the cigarette smoke. The data can be found in the FTCCIGAR.csv file (http://www.jpstats.org/Regression/data/FTCCIGAR.csv)
+
+Links to an external site.) which contains the tar, nicotine, and carbon monoxide contents (in milligrams) and weight (in grams) for a sample of 25 (filter) brands tested in a recent year. Suppose we want to model carbon monoxide content, as a function of tar content, nicotine content, and weight.
+
+# loading in the dataset 
+```{r}
+ftc_dat <- read_csv(curl::curl("http://www.jpstats.org/Regression/data/FTCCIGAR.csv"), 
+                   show_col_types = FALSE)
+```
+
+
+a. Examine the linearity assumption and make any transformation that are necessary.
+```{r}
+ggpairs(ftc_dat, progress = FALSE)
+```
+the linearity assumption for CO vs TAR, NICOTINE, and WEIGHT looks reasonable.
+
+
+b. Fit a multiple regression model to the data using all predictors. Check for multicollinearity in this model. Comment on what you find.
+```{r}
+# multiple regression with all predictors
+data_recipe <- recipe(CO ~ TAR + NICOTINE + WEIGHT, data = ftc_dat)
+
+lin_spec <- linear_reg() |>
+  set_engine("lm")
+
+wf <- workflow() |>
+  add_recipe(data_recipe) |>
+  add_model(lin_spec)
+
+lm_fit <- wf |>
+  fit(data = ftc_dat)
+
+# extract the underlying lm object
+lm_main <- lm_fit |>
+  extract_fit_engine()
+
+# Multicollinearity check
+vif(lm_main)
+```
+The VIF values for TAR and NICOTINE are extremely large, indicating severe multicollinearity. This means their effects on CO are highly confounded; standard errors for their coefficients are inflated, and individual t-tests for TAR and NICOTINE will be unstable, even though the overall model fits CO very well.
+
+c. Use lasso to determine which variables are important to modeling carbon monoxide content. Comment on the estimated coefficients found from this lasso fit. 
+```{r}
+# 1. Recipe: standardize predictors (like in the notes)
+ridge_recipe =
+  recipe(CO ~ TAR + NICOTINE + WEIGHT, data = ftc_dat) |>
+  step_normalize(all_numeric_predictors())
+
+# 2. 5-fold CV
+cv_folds = vfold_cv(ftc_dat, v = 5)
+
+# 3. Ridge model specification: mixture = 0 for pure ridge, penalty tuned
+ridge_spec =
+  linear_reg(mixture = 0, penalty = tune()) |>
+  set_engine("glmnet")
+
+# 4. Workflow
+ridge_wf =
+  workflow() |>
+  add_recipe(ridge_recipe) |>
+  add_model(ridge_spec)
+
+# 5. Penalty grid (100 log-spaced values from 10^-4 to 10^4, as in notes)
+penalty_grid =
+  grid_regular(
+    penalty(range = c(-4, 4)),
+    levels = 100
+  )
+
+# 6. Tune over the grid using RMSE and R^2
+ridge_tune =
+  tune_grid(
+    ridge_wf,
+    resamples = cv_folds,
+    grid      = penalty_grid,
+    metrics   = metric_set(rmse, rsq)
+  )
+
+# 7. Select the penalty that maximizes R^2
+best_penalty =
+  ridge_tune |>
+  select_best(metric = "rsq")
+
+# 8. Finalize workflow and fit ridge model on full data
+ridge_final_wf =
+  ridge_wf |>
+  finalize_workflow(best_penalty)
+
+ridge_fit =
+  ridge_final_wf |>
+  fit(data = ftc_dat)
+
+ridge_fit |> tidy()
+
+```
+Because TAR and NICOTINE are highly correlated, the OLS slopes in part (b) suffer from multicollinearity (large VIFs and unstable estimates). Ridge regression adds an $L^2$ penalty on the coefficients, which shrinks the slopes and probably produces more stable estimates while maintaining similar overall predictive performance. - FIX ME I NEED A DEFINITIVE ANSWER
+
+d. Use best subsets regression to determine the best model using a criterion of your choosing. Comment on the resulting model from best subsets and compare to the model from lasso. 
+```{r}
+lm_full <- lm(CO ~ TAR + NICOTINE + WEIGHT, data = ftc_dat)
+best_sub <- ols_step_best_subset(lm_full)
+
+best_sub
+plot(best_sub)
+
+```
+Using SBIC (Schwarz Bayesian Information Criterion) as the primary selection rule, the 1-predictor model (CO ~ TAR) had the smallest SBIC value. This model also had the largest adjusted $R^2 $and predicted $R^2$, and the smallest AIC, MSEP, FPE, HSP, and APC among the candidate models. In contrast, the 2 and 3 predictor models offered essentially no improvement in $R^2$ but showed worse adjusted $R^2$ and larger information/prediction criteria due to the extra complexity. The LASSO model selected in part (c) also retained TAR as the only important predictor, shrinking the coefficients of NICOTINE and WEIGHT essentially to zero. Thus, both best subsets and LASSO arrive at the same effective model, reinforcing the conclusion that TAR alone is sufficient to explain most of the variability in CO in this dataset.

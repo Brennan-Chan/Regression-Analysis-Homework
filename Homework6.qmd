@@ -138,7 +138,29 @@ lm_fit_int_trans |> glance()
 lm_fit_int |> tidy()
 ```
 
-REMEMBER TO WRITE THE FORMULA LATER
+The fitted regression model is 
+
+$$
+\widehat{\text{DESIRE}} =
+13.3520
+- 0.1080\,(\text{GENDER})
+- 0.0530\,(\text{SELFESTM})
+- 0.2998\,(\text{BODYSAT})
++ 0.6747\,(\text{IMPREAL})
+- 0.5319\,(\text{GENDER}\times\text{IMPREAL}).
+$$ 
+
+Could also be written as the following (NEED TO DECIDE WHICH VERSION TO USE) 
+
+$$
+\hat{y}
+= 13.3520
+- 0.1080\,\beta_1
+- 0.0530\,\beta_2
+- 0.2998\,\beta_3
++ 0.6747\,\beta_4
+- 0.5319\,\beta_5.
+$$
 
 ### d. Check for multicollinearity in the resulting model found in part b. Comment on what you find.
 
@@ -155,11 +177,17 @@ pred |>
   geom_hline()
 ```
 
-All VIFs were below common cutoffs (VIF \< 5), so there is no evidence of problematic multicollinearity in the retained model.
+All VIFs were below common cutoffs ($VIF < 5$), so there is no evidence of problematic multicollinearity in the retained model.
 
 ## 2. FTC Cigarette Study
 
-We model CO (carbon monoxide, mg) as a function of: - TAR (mg) - NICOTINE (mg) - WEIGHT (g)
+We model CO (carbon monoxide, mg) as a function of:
+
+-   TAR (mg)
+
+-   NICOTINE (mg)
+
+-   WEIGHT (g)
 
 ```{r}
 ftc_dat <- read_csv(curl::curl("http://www.jpstats.org/Regression/data/FTCCIGAR.csv"), 
@@ -172,10 +200,10 @@ ftc_dat <- read_csv(curl::curl("http://www.jpstats.org/Regression/data/FTCCIGAR.
 ggpairs(ftc_dat, progress = FALSE)
 ```
 
-the linearity assumption for CO vs TAR, NICOTINE, and WEIGHT looks reasonable.
+
+CO shows roughly linear relationships with TAR, NICOTINE, and WEIGHT. No transformations are needed. <!--NEED HELP REWORDING TO SOUND MORE CONFIDENT AND TO SOUND CLOSER TO HIS NOTES-->
 
 ### b. Fit a multiple regression model to the data using all predictors. Check for multicollinearity in this model. Comment on what you find.
-
 ```{r}
 # multiple regression with all predictors
 data_recipe <- recipe(CO ~ TAR + NICOTINE + WEIGHT, data = ftc_dat)
@@ -197,7 +225,6 @@ lm_main <- lm_fit |>
 # Multicollinearity check
 vif(lm_main)
 ```
-
 The VIF values for TAR and NICOTINE are extremely large, indicating severe multicollinearity. This means their effects on CO are highly confounded; standard errors for their coefficients are inflated, and individual t-tests for TAR and NICOTINE will be unstable, even though the overall model fits CO very well.
 
 ### c. Use lasso to determine which variables are important to modeling carbon monoxide content. Comment on the estimated coefficients found from this lasso fit.

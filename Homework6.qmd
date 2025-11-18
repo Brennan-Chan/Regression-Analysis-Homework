@@ -16,7 +16,7 @@ Predictors:\
 - **BODYSAT** (1–9, higher = more satisfied with one’s body)\
 - **IMPREAL** (1–7, higher = more belief that cosmetic-surgery reality TV is realistic)
 
-```{r}
+```{r, warning=FALSE}, message=FALSE}
 # might want to prune unneeded packages
 suppressPackageStartupMessages(library(tidymodels))
 suppressPackageStartupMessages(library(tidyverse))
@@ -83,7 +83,7 @@ anova(lm_main, lm_int)
 lm_fit |> glance()
 lm_fit_int |> glance()
 ```
-To decide whether the interaction term $GENDER \times IMPREAL$ should be included, we compared the additive model ($GENDER, SELFESTM, BODYSAT, IMPREAL$) to the larger model that also contained the $GENDER \times IMPREAL$ interaction using a nested F-test. Since this p-value is less than 0.05, there is sufficient evidence to conclude that the interaction coefficient is different from 0, so the interaction term should be retained in the model.
+To decide whether the interaction term $GENDER \times IMPREAL$ should be included, we compared the additive model ($GENDER, SELFESTM, BODYSAT, IMPREAL$) to the larger model that also contained the $GENDER \times IMPREAL$ interaction using a nested F-test. Since this p-value is less than $0.05$, there is sufficient evidence to conclude that the interaction coefficient is different from $0$, so the interaction term should be retained in the model.
 
 Transformed $SELFESTM$ model had worse results than the un-transformed modes. So I think we should not include it in the homework.
 ```{r}
@@ -154,7 +154,6 @@ pred |>
        title = "Residuals vs. Fitted Values")
   geom_hline()
 ```
-
 All VIFs were below common cutoffs ($VIF < 5$), so there is no evidence of problematic multicollinearity in the retained model.
 
 ## 2. FTC Cigarette Study
@@ -200,7 +199,7 @@ lm_main <- lm_fit |>
 # Multicollinearity check
 vif(lm_main)
 ```
-The VIF values for $TAR$ and $NICOTINE$ are extremely large, indicating severe multicollinearity. This means their effects on CO are highly confounded; standard errors for their coefficients are inflated, and individual t-tests for $TAR$ and $NICOTINE$ will be unstable, even though the overall model fits $CO$ very well.
+The VIF values for $TAR$ and $NICOTINE$ are extremely large, indicating severe multicollinearity. This means their effects on $CO$ are highly confounded; standard errors for their coefficients are inflated, and individual t-tests for $TAR$ and $NICOTINE$ will be unstable, even though the overall model fits $CO$ very well.
 
 ### c. Use lasso to determine which variables are important to modeling carbon monoxide content. Comment on the estimated coefficients found from this lasso fit.
 ```{r, warning=FALSE}
@@ -266,4 +265,4 @@ best_sub <- ols_step_best_subset(lm_full)
 best_sub
 plot(best_sub)
 ```
-Using SBIC (Schwarz Bayesian Information Criterion) as the primary selection rule, the 1-predictor model ($CO ~ TAR$) had the smallest SBIC value. This model also had the largest adjusted $R^2$ and predicted $R^2$, and the smallest AIC, MSEP, FPE, HSP, and APC among the candidate models. In contrast, the 2 and 3 predictor models offered essentially no improvement in $R^2$ but showed worse adjusted $R^2$ and larger information/prediction criteria due to the extra complexity. The LASSO model selected in part (c) also retained $TAR$ as the only important predictor, shrinking the coefficients of $NICOTINE$ and $WEIGHT$ essentially to zero. Thus, both best subsets and LASSO arrive at the same effective model, reinforcing the conclusion that $TAR$ alone is sufficient to explain most of the variability in CO in this dataset.
+Using SBIC (Schwarz Bayesian Information Criterion) as the primary selection rule, the 1-predictor model ($CO ~ TAR$) had the smallest SBIC value. This model also had the largest adjusted $R^2$ and predicted $R^2$, and the smallest AIC, MSEP, FPE, HSP, and APC among the candidate models. In contrast, the *2* and *3* predictor models offered essentially no improvement in $R^2$ but showed worse adjusted $R^2$ and larger information/prediction criteria due to the extra complexity. The LASSO model selected in part (c) also retained $TAR$ as the only important predictor, shrinking the coefficients of $NICOTINE$ and $WEIGHT$ essentially to zero. Thus, both best subsets and LASSO arrive at the same effective model, reinforcing the conclusion that $TAR$ alone is sufficient to explain most of the variability in CO in this dataset.

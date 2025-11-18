@@ -38,16 +38,16 @@ tv_dat |>
   select(GENDER, SELFESTM, BODYSAT, IMPREAL, DESIRE) |>
   ggpairs(progress = FALSE)
 ```
-The linearity assumption appears reasonable for all predictors. The only questionable plot was SELFESTM -> DESIRE, which shows some mild curvature. As a diagnostic check, we evaluated a log-transform:
+The linearity assumption appears reasonable for all predictors. The only questionable plot was $SELFESTM -> DESIRE$, which shows some mild curvature. As a diagnostic check, we evaluated a log-transform:
 ```{r}
 tv_dat |> 
   mutate(LOG_SELFESTM = log(SELFESTM)) |> 
   select(GENDER, LOG_SELFESTM, BODYSAT, IMPREAL, DESIRE) |>
   ggpairs(progress = FALSE)
 ```
-The log-transform does not improve linearity, and because SELFESTM is already on a bounded, psychological scale, the untransformed variable is retained. The original predictors satisfy the linearity assumption well enough; no transformations are needed.
+The log-transform does not improve linearity, and because $SELFESTM$ is already on a bounded, psychological scale, the untransformed variable is retained. The original predictors satisfy the linearity assumption well enough; no transformations are needed.
 
-### b. Fit a multiple regression model to the data using all predictors. Consider adding an interaction term between GENDER and IMPREAL. Decide if this interaction term should be included in the model.
+### b. Fit a multiple regression model to the data using all predictors. Consider adding an interaction term between $GENDER$ and $IMPREAL$. Decide if this interaction term should be included in the model.
 ```{r}
 # no interaction term
 data_recipe = recipe(DESIRE ~ GENDER + SELFESTM + BODYSAT + IMPREAL, data = tv_dat)
@@ -83,9 +83,9 @@ anova(lm_main, lm_int)
 lm_fit |> glance()
 lm_fit_int |> glance()
 ```
-To decide whether the interaction term $GENDER \times IMPREAL$ should be included, we compared the additive model (GENDER, SELFESTM, BODYSAT, IMPREAL) to the larger model that also contained the GENDER × IMPREAL interaction using a nested F-test. Since this p-value is less than 0.05, there is sufficient evidence to conclude that the interaction coefficient is different from 0, so the interaction term should be retained in the model.
+To decide whether the interaction term $GENDER \times IMPREAL$ should be included, we compared the additive model ($GENDER, SELFESTM, BODYSAT, IMPREAL$) to the larger model that also contained the $GENDER \times IMPREAL$ interaction using a nested F-test. Since this p-value is less than 0.05, there is sufficient evidence to conclude that the interaction coefficient is different from 0, so the interaction term should be retained in the model.
 
-Transformed SELFESTM model had worse results than the un-transformed modes. So I think we should not include it in the homework.
+Transformed $SELFESTM$ model had worse results than the un-transformed modes. So I think we should not include it in the homework.
 ```{r}
 # no interaction term
 data_recipe_trans = recipe(DESIRE ~ GENDER + SELFESTM + BODYSAT + IMPREAL, data = tv_dat) |>
@@ -120,7 +120,6 @@ lm_main <- lm_fit |> extract_fit_engine()
 lm_int  <- lm_fit_int |> extract_fit_engine()
 
 anova(lm_main, lm_int)
-
 
 lm_fit_trans |> glance()
 lm_fit_int_trans |> glance()
@@ -160,7 +159,7 @@ All VIFs were below common cutoffs ($VIF < 5$), so there is no evidence of probl
 
 ## 2. FTC Cigarette Study
 
-We model CO (carbon monoxide, mg) as a function of:
+We model $CO$ (carbon monoxide, mg) as a function of:
 
 -   $TAR (mg)$
 
@@ -177,7 +176,7 @@ ftc_dat <- read_csv(curl::curl("http://www.jpstats.org/Regression/data/FTCCIGAR.
 ```{r}
 ggpairs(ftc_dat, progress = FALSE)
 ```
-CO shows clear linear relationships with TAR, NICOTINE, and WEIGHT. No transformations are needed. 
+$CO$ shows clear linear relationships with $TAR$, $NICOTINE$, and $WEIGHT$. No transformations are needed. 
 
 ### b. Fit a multiple regression model to the data using all predictors. Check for multicollinearity in this model. Comment on what you find.
 ```{r}
@@ -201,7 +200,7 @@ lm_main <- lm_fit |>
 # Multicollinearity check
 vif(lm_main)
 ```
-The VIF values for $TAR$ and $NICOTINE$ are extremely large, indicating severe multicollinearity. This means their effects on CO are highly confounded; standard errors for their coefficients are inflated, and individual t-tests for TAR and NICOTINE will be unstable, even though the overall model fits $CO$ very well.
+The VIF values for $TAR$ and $NICOTINE$ are extremely large, indicating severe multicollinearity. This means their effects on CO are highly confounded; standard errors for their coefficients are inflated, and individual t-tests for $TAR$ and $NICOTINE$ will be unstable, even though the overall model fits $CO$ very well.
 
 ### c. Use lasso to determine which variables are important to modeling carbon monoxide content. Comment on the estimated coefficients found from this lasso fit.
 ```{r, warning=FALSE}
@@ -257,7 +256,7 @@ ridge_fit =
 ridge_fit |> tidy()
 
 ```
-Because TAR and NICOTINE are highly correlated, the OLS slopes in part (b) suffer from multicollinearity (large VIFs and unstable estimates). Ridge regression adds an $L^2$ penalty on the coefficients, which shrinks the slopes and produces more stable estimates while maintaining similar overall predictive performance.
+Because $TAR$ and $NICOTINE$ are highly correlated, the OLS slopes in part (b) suffer from multicollinearity (large VIFs and unstable estimates). Ridge regression adds an $L^2$ penalty on the coefficients, which shrinks the slopes and produces more stable estimates while maintaining similar overall predictive performance.
 
 ### d. Use best subsets regression to determine the best model using a criterion of your choosing. Comment on the resulting model from best subsets and compare to the model from lasso.
 ```{r}
@@ -266,6 +265,5 @@ best_sub <- ols_step_best_subset(lm_full)
 
 best_sub
 plot(best_sub)
-
 ```
-Using SBIC (Schwarz Bayesian Information Criterion) as the primary selection rule, the 1-predictor model ($CO ~ TAR$) had the smallest SBIC value. This model also had the largest adjusted $R^2$ and predicted $R^2$, and the smallest AIC, MSEP, FPE, HSP, and APC among the candidate models. In contrast, the 2 and 3 predictor models offered essentially no improvement in $R^2$ but showed worse adjusted $R^2$ and larger information/prediction criteria due to the extra complexity. The LASSO model selected in part (c) also retained TAR as the only important predictor, shrinking the coefficients of NICOTINE and WEIGHT essentially to zero. Thus, both best subsets and LASSO arrive at the same effective model, reinforcing the conclusion that TAR alone is sufficient to explain most of the variability in CO in this dataset.
+Using SBIC (Schwarz Bayesian Information Criterion) as the primary selection rule, the 1-predictor model ($CO ~ TAR$) had the smallest SBIC value. This model also had the largest adjusted $R^2$ and predicted $R^2$, and the smallest AIC, MSEP, FPE, HSP, and APC among the candidate models. In contrast, the 2 and 3 predictor models offered essentially no improvement in $R^2$ but showed worse adjusted $R^2$ and larger information/prediction criteria due to the extra complexity. The LASSO model selected in part (c) also retained $TAR$ as the only important predictor, shrinking the coefficients of $NICOTINE$ and $WEIGHT$ essentially to zero. Thus, both best subsets and LASSO arrive at the same effective model, reinforcing the conclusion that $TAR$ alone is sufficient to explain most of the variability in CO in this dataset.

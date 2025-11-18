@@ -1,6 +1,6 @@
 ---
 title: "Homework 6"
-author: "Brennan Chan"
+author: "Group 4: Brennan Chan, Issac Wolfe, Karsten Griebl"
 format: pdf
 editor: visual
 ---

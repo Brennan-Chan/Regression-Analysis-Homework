@@ -1,0 +1,40 @@
+---
+title: "Project 2"
+author: "Group 5: Katelyn Wnuk, Brennan Chan, Emmett Collins"
+format: pdf
+editor: visual
+---
+Load in the data keeping only numeric values for an easier pipeline.
+```{r, message=FALSE, warning=FALSE}
+library(tidymodels)
+library(tidyverse)
+library(car)
+library(olsrr)
+library(dplyr)
+library(GGally)
+
+data_car = read_csv("http://www.jpstats.org/data/car_price.csv") |>
+  select( where(~ !is.character(.x)) )
+```
+
+## REWRITE ME 
+There are a several methods for picking what variables we want to generate a linear model with. One of these methods is to look at all possible models and pick the best one based on a certain criteria. In this case we will use adjusted R-squared to determine the best models.
+```{r}
+fit = lm(price ~ ., data = data_car)
+subsets_best = ols_step_best_subset(fit) 
+plot(subsets_best)
+subsets_best
+```
+
+
+## REWRITE ME
+Get the top 10 models by adjusted R-squared
+```{r}
+top10 <- fits$result |>
+  arrange(desc(adjr)) |>
+  slice(1:10)
+top10
+```
+
+
+

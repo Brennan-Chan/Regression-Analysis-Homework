@@ -4,6 +4,7 @@ author: "Group 5: Katelyn Wnuk, Brennan Chan, Emmett Collins"
 format: pdf
 editor: visual
 ---
+
 Load in the data keeping only numeric values for an easier pipeline.
 ```{r, message=FALSE, warning=FALSE}
 library(tidymodels)
@@ -17,7 +18,9 @@ data_car = read_csv("http://www.jpstats.org/data/car_price.csv") |>
   select( where(~ !is.character(.x)) )
 ```
 
-## REWRITE ME 
+# Model Selection
+
+## REWRITE ME
 There are a several methods for picking what variables we want to generate a linear model with. One of these methods is to look at all possible models and pick the best one based on a certain criteria. In this case we will use adjusted R-squared to determine the best models.
 ```{r}
 fit = lm(price ~ ., data = data_car)
@@ -25,10 +28,42 @@ subsets_best = ols_step_best_subset(fit)
 plot(subsets_best)
 subsets_best
 ```
-We decided to pick the model with 14 predictor variables (car_ID, symboling, wheelbase, carlength, carwidth, carheight, curbweight, enginesize, stroke, compressionratio, horsepower, peakrpm, citympg, highwaympg )
+Several candidate regression models were evaluated using adjusted as the primary selection criterion. Adjusted is preferred over the unadjusted statistic because it penalizes unnecessary model complexity. A predictor will only increase adjusted if it provides meaningful explanatory power beyond what is already captured by the existing variables. Thus, adjusted $R^2$ offers a more objective balance between goodness of fit and the risk of overfitting.
+
+Among all fitted models, the specification containing 14 predictor variables ( car_ID, symboling, wheelbase, carlength, carwidth, carheight, curbweight, enginesize, stroke, compressionratio, horsepower, peakrpm, citympg, highwaympg ) produced the largest adjusted $R^2$ This indicates that, after accounting for the number of predictors included, this model explains the greatest proportion of variation in car prices among the considered alternatives. Therefore, this model was selected for further analysis, including outlier detection, assumption checking, and model validation.
+
+## Fitting the model
+The dataset was split into an 80% training set and a 20% testing set to allow for later validation. Using the training data, a linear regression model was fit with the 14 selected predictors. The model was constructed through a tidymodels workflow combining the recipe and the OLS engine.
+```{r}
+data_split <- initial_split(data_car, prop = 0.80)
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+car_recipe <- recipe(price ~ 
+                       car_ID + symboling + wheelbase + carlength + 
+                       carwidth + carheight + curbweight + enginesize +
+                       stroke + compressionratio + horsepower + peakrpm +
+                       citympg + highwaympg,
+                     data = train_data)
+
+car_model <- linear_reg() |>
+  set_engine("lm")
+
+car_workflow <- workflow() |>
+  add_recipe(car_recipe) |>
+  add_model(car_model)
+
+fitted_model <- car_workflow |>
+  fit(data <- train_data)
+
+fitted_model |> glance()
+```
 
 
+# Outlier Detection
+```{r}
+fitted_model |> extract_fit_engine() |> ols_plot_resid_lev()
 
+fitted_model |> extract_fit_engine() |> ols_plot_cooksd_bar()
+```
 
-# temp BRENNAN CHAN DELETE ME 
-Changed how we view the best subsets for better viewing and more closely resembling his notes.

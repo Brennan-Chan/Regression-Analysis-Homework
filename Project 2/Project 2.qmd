@@ -10,6 +10,7 @@ Load in the data keeping only numeric values for an easier pipeline.
 library(tidymodels)
 library(tidyverse)
 library(car)
+library(broom)
 library(olsrr)
 library(dplyr)
 library(GGally)
@@ -33,6 +34,7 @@ Several candidate regression models were evaluated using adjusted as the primary
 Among all fitted models, the specification containing 14 predictor variables ( car_ID, symboling, wheelbase, carlength, carwidth, carheight, curbweight, enginesize, stroke, compressionratio, horsepower, peakrpm, citympg, highwaympg ) produced the largest adjusted $R^2$ This indicates that, after accounting for the number of predictors included, this model explains the greatest proportion of variation in car prices among the considered alternatives. Therefore, this model was selected for further analysis, including outlier detection, assumption checking, and model validation.
 
 ## Fitting the model
+
 The dataset was split into an 80% training set and a 20% testing set to allow for later validation. Using the training data, a linear regression model was fit with the 14 selected predictors. The model was constructed through a tidymodels workflow combining the recipe and the OLS engine.
 ```{r}
 data_split <- initial_split(data_car, prop = 0.80)
@@ -61,9 +63,128 @@ fitted_model |> glance()
 
 
 # Outlier Detection
+
+To identify potential outliers and influential points, we examined several diagnostic plots and statistics from the fitted model. The residuals vs. leverage plot and Cook's distance bar plot were generated to assess the influence of individual observations on the regression results.
 ```{r}
 fitted_model |> extract_fit_engine() |> ols_plot_resid_lev()
-
+```
+we can see from the residuals vs leverage plot that there are 15 points (19, 143, 10, 5, 37, 39, 104, 86, 122, 125, 136, 92, 116, 111, 131) that stand out as potentially influential. To further investigate these points, we can look at the Cook's distance bar plot and DFBETAS plot.
+```{r}
 fitted_model |> extract_fit_engine() |> ols_plot_cooksd_bar()
 ```
+we can see from the cooksd plot that many of the outliers are influential to the model. Finally, we can look at the DFBETAS plot to see how much each point is influencing the coefficients of the model.
+```{r}
+fitted_model |> extract_fit_engine() |> ols_plot_dfbetas()
+```
+From the DFBETAS plot, we can see that there are several points that are influencing the coefficients of the model significantly. Based on these diagnostic plots, we identified a total of 15 points that were marked as non-normal. These points will be further investigated to determine if they should be removed from the dataset or if they are valid observations that should be kept.
+
+
+
+## THE FOLLOWING SECTION IS NOT NEEDED IN FINAL REPORT 
+this section is how we get which values are outliers without looking at the plot like in the notes. until we settle on a acceptable model or just add a seed value this is what I created to keep everything consistant
+
+I am getting a list of all the ids of the points that were marked as non normal to make writing the report in the future easier. 
+```{r}
+fit_ols <- fitted_model |> extract_fit_engine()
+
+n <- nrow(train_data)
+dfbeta_cut <- 2 / sqrt(n)
+
+diag_df <- augment(fit_ols) |>
+  mutate(
+    id            = row_number(),
+    outlier_flag  = abs(.std.resid) > 2,                # same horiz threshold
+    leverage_flag = .hat > 2 * (ncol(train_data) / nrow(train_data)),  # vertical threshold
+    both_flag     = outlier_flag & leverage_flag
+  )
+
+non_normal_points <- diag_df |> 
+  filter(outlier_flag | leverage_flag) |> 
+  arrange(desc(abs(.std.resid))) |> 
+  select(id)
+
+non_normal_points
+```
+
+so basically what this block does is get all of the extreme outliers and lists them out. Traditionally you do them by hand but for our project I wanted to make very sure you get the right ones everytime you run it because the model changes everytime thus the outliers can change everytime so its important to stay consistant. doing that manually everytime would be terrible so I made this instead. 
+```{r}
+library(broom)
+library(dplyr)
+library(tidyr)
+
+fit_ols <- fitted_model |> extract_fit_engine()
+
+n  <- nrow(train_data)
+p  <- length(coef(fit_ols)) - 1
+
+std_resid_cut <- 2
+lev_cut       <- 2 * (p + 1) / n
+cook_cut      <- 4 / (n - p - 1)
+dfbeta_cut    <- 2 / sqrt(n)
+
+# --- MAIN DIAGNOSTICS TABLE ---
+diag_df <- augment(fit_ols) |>
+  mutate(
+    id              = row_number(),
+    outlier_flag    = abs(.std.resid) >= std_resid_cut,
+    leverage_flag   = .hat >= lev_cut,
+    cook_flag       = .cooksd >= cook_cut
+  )
+
+
+# Compute DFBETAs from lm object
+dfbeta_mat <- dfbeta(fit_ols)        # matrix with one column per coefficient
+dfbeta_df <- as.data.frame(dfbeta_mat)
+
+dfbeta_df <- dfbeta_df |>
+  mutate(id = row_number()) |>
+  pivot_longer(
+    cols = -id,
+    names_to = "predictor",
+    values_to = "dfbeta"
+  ) |>
+  mutate(
+    dfbeta_flag = abs(dfbeta) >= dfbeta_cut
+  )
+
+
+# Summaries from DFBETAs
+dfbeta_summary <- dfbeta_df |>
+  group_by(id) |>
+  summarize(
+    dfbeta_hits = sum(dfbeta_flag),
+    .groups = "drop"
+  )
+
+# Combine everything
+full_flags <- diag_df |>
+  left_join(dfbeta_summary, by = "id") |>
+  mutate(
+    dfbeta_hits = replace_na(dfbeta_hits, 0),
+    total_flags = outlier_flag + leverage_flag + cook_flag + (dfbeta_hits > 0)
+  )
+
+ranked_points <- full_flags |>
+  filter(total_flags > 0) |>                 # only problematic
+  arrange(desc(total_flags), desc(dfbeta_hits), desc(abs(.std.resid))) |> 
+  select(
+    id,
+    .std.resid,
+    .hat,
+    .cooksd,
+    dfbeta_hits,
+    outlier_flag,
+    leverage_flag,
+    cook_flag,
+    total_flags
+  )
+
+extreme_points <- ranked_points |> 
+  filter(total_flags >= 3) |> 
+  pull(id)
+
+
+extreme_points
+```
+
 

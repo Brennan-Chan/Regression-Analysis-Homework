@@ -25,16 +25,10 @@ subsets_best = ols_step_best_subset(fit)
 plot(subsets_best)
 subsets_best
 ```
-
-
-## REWRITE ME
-Get the top 10 models by adjusted R-squared
-```{r}
-top10 <- fits$result |>
-  arrange(desc(adjr)) |>
-  slice(1:10)
-top10
-```
+We decided to pick the model with 14 predictor variables (car_ID, symboling, wheelbase, carlength, carwidth, carheight, curbweight, enginesize, stroke, compressionratio, horsepower, peakrpm, citympg, highwaympg )
 
 
 
+
+# temp BRENNAN CHAN DELETE ME 
+Changed how we view the best subsets for better viewing and more closely resembling his notes.

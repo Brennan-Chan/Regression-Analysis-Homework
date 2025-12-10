@@ -22,10 +22,7 @@ data_car = read_csv("http://www.jpstats.org/data/car_price.csv") |>
 
 # Model Selection
 
-## REWRITE ME
-
-There are a several methods for picking what variables we want to generate a linear model with. One of these methods is to look at all possible models and pick the best one based on a certain criteria. In this case we will use adjusted R-squared to determine the best models.
-
+To identify an appropriate regression model, we evaluated all possible subsets of predictors and compared them using adjusted $R^2$, which balances model fit against unnecessary complexity. Adjusted $R^2$ increases only when a predictor provides meaningful explanatory value beyond what is already included. The all-subsets procedure identified a model with 14 predictors that achieved the highest adjusted $R^2$. This model was selected for further analysis, including outlier detection, assumption checking, and validation.
 ```{r}
 fit = lm(price ~ ., data = data_car)
 subsets_best = ols_step_best_subset(fit) 
@@ -74,7 +71,7 @@ To identify potential outliers and influential points, we examined several diagn
 fitted_model |> extract_fit_engine() |> ols_plot_resid_lev()
 ```
 
-we can see from the residuals vs leverage plot that there are 13 points (106, 6, 83, 158, 28, 71, 130, 147, 80, 110, 112, 133, 37) that stand out as potentially influential outliers. To further investigate these points, we can look at the Cook's distance bar plot and DFBETAS plot.
+we can see from the residuals vs leverage plot that there are 10 points (6, 130, 147, 83, 71, 8, 106, 28, 158, 110) that stand out as potentially influential outliers. To further investigate these points, we can look at the Cook's distance bar plot and DFBETAS plot.
 
 ```{r}
 fitted_model |> extract_fit_engine() |> ols_plot_cooksd_bar()
@@ -90,12 +87,11 @@ From the DFBETAS plot, we can see that there are several points that are influen
 
 ## Testing to see if removing outliers helps the model
 
-### NEEDS TO BE REWRITTEN
-okay now that we have found the extreme outliers lets see if the model improves when removed and refitted 
+Influential observations were identified using the residuals–leverage plot, Cook’s distance, and DFBETAs. These diagnostics revealed several points with both high leverage and large residuals, indicating unusually strong influence on the fitted model. Observations 6, 130, 147, 83, 71, 8, 106, 28, 158, and 110 were consistently flagged across multiple measures. Because such points can distort coefficient estimates and inflate error variability, they were investigated further and removed for a refined model fit.
 ```{r}
 extreme_outliers <- c(6, 130, 147, 83, 71, 8, 106, 28, 158, 110)
 
-clean_train <- train_data[-extreme_points, ]
+clean_train <- train_data[-extreme_outliers, ]
 
 refit_model <- car_workflow |>
   fit(data = clean_train)
@@ -106,110 +102,67 @@ cleaned_summary  <- refit_model   |> glance()
 original_summary
 cleaned_summary
 ```
-the model showed clear improvement in overall fit. The adjusted $R^2$ increased from $0.86384$ to $0.8883$, and the residual standard error ($\sigma$) decreased substantially (from $2971.6$ to $2173.0$), indicating a tighter fit around the regression line. In addition, both AIC and BIC were noticeably lower for the cleaned model, and the deviance was reduced by more than half, suggesting a considerably better representation of the underlying data.
+A new model was fit after removing the ten most influential observations from the training set to assess their effect on model performance. The refined model showed clear improvement, with increased adjusted $R^2$, reduced residual standard error, and lower AIC/BIC values. These changes indicate a more stable and precise relationship between predictors and car price. Based on this improvement, the refined model was used for assumption checking and validation.
 
-These results indicate that the influential observations were inflating the error structure and degrading model performance. Because the model without these points provides a better statistical fit and more stable parameter estimates, we proceed with the cleaned model for the remaining diagnostic checks and the final validation step.
+## Checking Assumptions for the Multiple Regression Model
 
-## THE FOLLOWING SECTION IS NOT NEEDED IN FINAL REPORT
-
-this section is how we get which values are outliers without looking at the plot like in the notes. until we settle on a acceptable model or just add a seed value this is what I created to keep everything consistant
-
-I am getting a list of all the ids of the points that were marked as non normal to make writing the report in the future easier.
+### 1. Linearity & Constant Variance (Homoscedasticity)
 ```{r}
-fit_ols <- fitted_model |> extract_fit_engine()
-
-n <- nrow(train_data)
-dfbeta_cut <- 2 / sqrt(n)
-
-diag_df <- augment(fit_ols) |>
-  mutate(
-    id            = row_number(),
-    outlier_flag  = abs(.std.resid) > 2,                # same horiz threshold
-    leverage_flag = .hat > 2 * (ncol(train_data) / nrow(train_data)),  # vertical threshold
-    both_flag     = outlier_flag & leverage_flag
-  )
-
-non_normal_points <- diag_df |> 
-  filter(outlier_flag | leverage_flag) |> 
-  arrange(desc(abs(.std.resid))) |> 
-  select(id)
-
-non_normal_points
+lm_refined <- extract_fit_engine(refit_model)
+ols_plot_resid_fit(lm_refined)
 ```
+The residuals appear randomly scattered around zero with no systematic curvature, which indicates that the linearity assumption is reasonable. The vertical spread of the residuals does not show a strong funnel shape, suggesting that the constant variance assumption is not severely violated.
 
-so basically what this block does is get all of the extreme outliers and lists them out. Traditionally you do them by hand but for our project I wanted to make very sure you get the right ones everytime you run it because the model changes everytime thus the outliers can change everytime so its important to stay consistant. doing that manually everytime would be terrible so I made this instead.
+### 2. Normality of the Error Terms
 ```{r}
-fit_ols <- fitted_model |> extract_fit_engine()
-
-n  <- nrow(train_data)
-p  <- length(coef(fit_ols)) - 1
-
-std_resid_cut <- 2
-lev_cut       <- 2 * (p + 1) / n
-cook_cut      <- 4 / (n - p - 1)
-dfbeta_cut    <- 2 / sqrt(n)
-
-# --- MAIN DIAGNOSTICS TABLE ---
-diag_df <- augment(fit_ols) |>
-  mutate(
-    id              = row_number(),
-    outlier_flag    = abs(.std.resid) >= std_resid_cut,
-    leverage_flag   = .hat >= lev_cut,
-    cook_flag       = .cooksd >= cook_cut
-  )
-
-
-# Compute DFBETAs from lm object
-dfbeta_mat <- dfbeta(fit_ols)        # matrix with one column per coefficient
-dfbeta_df <- as.data.frame(dfbeta_mat)
-
-dfbeta_df <- dfbeta_df |>
-  mutate(id = row_number()) |>
-  pivot_longer(
-    cols = -id,
-    names_to = "predictor",
-    values_to = "dfbeta"
-  ) |>
-  mutate(
-    dfbeta_flag = abs(dfbeta) >= dfbeta_cut
-  )
-
-
-# Summaries from DFBETAs
-dfbeta_summary <- dfbeta_df |>
-  group_by(id) |>
-  summarize(
-    dfbeta_hits = sum(dfbeta_flag),
-    .groups = "drop"
-  )
-
-# Combine everything
-full_flags <- diag_df |>
-  left_join(dfbeta_summary, by = "id") |>
-  mutate(
-    dfbeta_hits = replace_na(dfbeta_hits, 0),
-    total_flags = outlier_flag + leverage_flag + cook_flag + (dfbeta_hits > 0)
-  )
-
-ranked_points <- full_flags |>
-  filter(total_flags > 0) |>                 # only problematic
-  arrange(desc(total_flags), desc(dfbeta_hits), desc(abs(.std.resid))) |> 
-  select(
-    id,
-    .std.resid,
-    .hat,
-    .cooksd,
-    dfbeta_hits,
-    outlier_flag,
-    leverage_flag,
-    cook_flag,
-    total_flags
-  )
-
-extreme_points <- ranked_points |> 
-  filter(total_flags >= 3) |> 
-  pull(id)
-
-
-extreme_points
+ols_plot_resid_hist(lm_refined)
+ols_plot_resid_qq(lm_refined)
 ```
+The histogram is approximately bell-shaped, and the Q–Q plot shows points lying close to the reference line with only mild deviations in the tails. This suggests that the normality assumption is reasonably satisfied.
+
+### 3. Independence of Errors
+```{r}
+durbinWatsonTest(lm_refined)
+```
+The Durbin–Watson test produced a p-value greater than 0.05, providing no evidence of autocorrelation. Thus, the independence assumption appears to hold.
+
+### 4. Multicollinearity
+```{r}
+vif(lm_refined)
+```
+Several predictors exhibit large VIF values, indicating multicollinearity. As emphasized in the notes, multicollinearity does not violate the assumptions of the Multiple Regression Model but can make individual coefficient estimates unstable. Because the goal of this project is prediction rather than inference, no corrective action was taken.
+
+
+## Model Validation
+
+### 1. Generate Test-Set Predictions
+```{r}
+test_results <- predict(refit_model, new_data = test_data) |>
+bind_cols(test_data)
+```
+Using the cleaned model (with extreme outliers removed), we generate predicted prices for the 20% testing subset. These predictions allow us to evaluate out-of-sample performance, exactly as described in Section 22.2 of the notes. The test set has not influenced model training, so it provides an unbiased measure of predictive accuracy.
+
+### 2. Compute Validation Metrics
+```{r}
+validation_metrics <- test_results |>
+metrics(truth = price, estimate = .pred)
+
+validation_metrics
+```
+The test-set metrics indicate that the refined model provides reasonably strong predictive performance. The RMSE of around $3569$ and MAE of around $2574$ show that typical prediction errors are moderate relative to the overall price range, and the MAE being smaller than the RMSE suggests only a few larger residuals. The test-set $R^2$ of 0.789 means the model explains roughly 79% of the variability in car prices for unseen data, which aligns well with its training performance. Overall, the model generalizes well and does not show signs of substantial overfitting.
+
+
+### 3. Plot Predicted vs. Actual Prices
+```{r}
+ggplot(test_results, aes(x = price, y = .pred)) +
+geom_point(color = "blue") +
+geom_abline(color = "red") +
+labs(
+title = "Model Validation: Actual vs Predicted Prices",
+x = "Actual Price",
+y = "Predicted Price"
+) +
+theme_minimal()
+
+```
+The validation plot mirrors the example in the course notes: a 45-degree reference line is used to visually assess predictive alignment. If predictions closely follow this line, the model is accurately capturing the relationship in the test data. Here, the points show a reasonably tight linear pattern without major systematic deviations, indicating consistent predictive performance.
